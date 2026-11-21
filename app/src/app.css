@@ -188,3 +188,5 @@ select.inl { padding-right: 2px; }
 .wmeal { text-transform: capitalize; font-size: 11px; letter-spacing: .02em; }
 .wname { font-weight: 650; font-size: 14px; line-height: 1.2; }
 .plan-sheet { bottom: auto; top: 50%; right: 50%; transform: translate(50%, -50%); }
+.freezer-pick summary { font-weight: 700; color: var(--accent); cursor: pointer; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-soft); list-style: none; }
+.freezer-pick[open] summary { border-radius: 10px 10px 0 0; }

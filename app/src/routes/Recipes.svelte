@@ -1,5 +1,6 @@
 <script>
   import Dish from '../components/Dish.svelte';
+  import AdSlot from '../components/AdSlot.svelte';
   import { conflicts, prefsOf } from '../lib/diet.js';
   const prefs = $derived(prefsOf(app.settings));
   const warnText = (r) => { const c = conflicts(r, prefs); return [...c.allergens.map((a) => `contains ${a.toLowerCase()}`), ...c.diets, ...c.avoid.map((a) => `has ${a}`)].join(' · '); };
@@ -82,7 +83,8 @@
     {#if starter}<Onboarding {go} onclose={() => (starter = false)} />{/if}
     <input placeholder="Search saved recipes" bind:value={q} style="margin:6px 0" />
     <div class="card">
-      {#each list as r}
+      {#each list as r, ri}
+        {#if ri === 6}<AdSlot slot="recipes-list" format="native" />{/if}
         <div class="list-row">
           <button class="quiet grow" style="text-align:left;justify-content:flex-start;color:var(--ink);padding:0;display:flex;gap:10px;align-items:center" onclick={() => (open = open === r.id ? null : r.id)}>
             <Dish {r} size={52} />

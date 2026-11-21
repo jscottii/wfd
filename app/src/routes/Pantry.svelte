@@ -1,4 +1,5 @@
 <script>
+  import AdSlot from '../components/AdSlot.svelte';
   import { app, addPantry, updatePantry, removePantry, toast } from '../lib/db.svelte.js';
   import { parseAdd, daysLeft, covers, placeFor, useByFor } from '../lib/pantry.js';
   import { showAmount, splitContainer, joinContainer, UNIT_CHOICES, CONTAINERS, SIZE_UNITS } from '../lib/units.js';
@@ -126,4 +127,5 @@
     </div>
   {/each}
   {#if app.pantry.length}<p class="small muted">Tap an item to change its amount, where it lives, or its use-by date. {relative ? 'Low or Out puts it back on the shopping list.' : 'Fill in how much you have — for a can, jar or bag, also its size. Set it to 0, or tap + List, to put it on the shopping list.'} Change how amounts work in More → Settings.</p>{/if}
+  <AdSlot slot="pantry" format="banner" />
 </div>

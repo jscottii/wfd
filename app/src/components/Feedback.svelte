@@ -1,5 +1,5 @@
 <script>
-  import { app, sb, toast } from '../lib/db.svelte.js';
+  import { app, sb, toast, track } from '../lib/db.svelte.js';
   // Contact us / feedback — saved for the WFD team to read
   let kind = $state('feedback'), message = $state(''), replyTo = $state(app.user?.email || ''), busy = $state(false), sent = $state(false), err = $state('');
   const KINDS = [['feedback', '💬 Feedback'], ['bug', '🐞 Something’s broken'], ['idea', '💡 Idea'], ['help', '🙋 Need help']];
@@ -8,7 +8,7 @@
     const { error } = await sb.from('feedback').insert({ kind, message: message.trim(), reply_to: replyTo.trim() || null, app_version: `${__APP_VERSION__} (${__BUILD_DATE__})`, page: (location.hash || '#').slice(1, 40) });
     busy = false;
     if (error) { err = error.message; return; }
-    sent = true; message = ''; toast('✓ Thanks — we got it');
+    sent = true; message = ''; track('feedback_sent', { kind }); toast('✓ Thanks — we got it');
   }
 </script>
 

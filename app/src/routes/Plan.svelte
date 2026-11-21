@@ -1,6 +1,6 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
-  import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned } from '../lib/db.svelte.js';
+  import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned, track } from '../lib/db.svelte.js';
   import { pickMix, recipesNeeded } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
   import Dish from '../components/Dish.svelte';
@@ -87,7 +87,7 @@
   let how = $state(''), usePantry = $state(null), mixInfo = $state(null);
   let needN = $derived(recipesNeeded(shape, household, app.recipes));
   function pickForMe() {
-    how = 'auto';
+    how = 'auto'; track('pick_for_me');
     const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
     const pantryIds = new Set(app.pantry.filter((p) => p.item_id && !['low', 'out'].includes(p.level)).map((p) => p.item_id));
     const r = pickMix({ recipes: app.recipes.filter((x) => !clash(x).any), need: needN, pantryIds, liked: app.settings.cuisines || [], recent, usePantry: !!usePantry });
@@ -107,6 +107,7 @@
     try {
       await savePlan({ household, shape: $state.snapshot(shape), days: $state.snapshot(days), selected: Object.keys(sel), startNewWeek: startNew, pantry, sourceUrl });
       trip.result = null;
+      track(startNew ? 'plan_start' : 'plan_draft', { recipes: picked.length, people: household });
       if (startNew) { go('trip'); planTrip(); } else toast('✓ Draft saved');
     } catch (e) { err = e.message; }
     saving = false;
@@ -246,5 +247,5 @@
     </div>
   </div>
   {/if}
-  <AdSlot />
+  <AdSlot slot="plan" format="banner" />
 </div>

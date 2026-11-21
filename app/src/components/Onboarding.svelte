@@ -1,5 +1,5 @@
 <script>
-  import { app, saveSettings, importRecipes, addLocalStores } from '../lib/db.svelte.js';
+  import { app, saveSettings, importRecipes, addLocalStores, track } from '../lib/db.svelte.js';
   import { hereAddress, findLocalChains, geocode } from '../lib/maps.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -38,7 +38,7 @@
         const [r] = await importRecipes([fromMealDb(m)], 'mdb'); out.push(r); prog = out.length;
       }
       made = out;
-      await saveSettings({ onboarded: true });
+      await saveSettings({ onboarded: true }); track('onboarding_done', { meals: out.length, cuisines: liked.length });
       step = 'done';
     } catch (e) { err = e.message; step = 'pick'; }
   }

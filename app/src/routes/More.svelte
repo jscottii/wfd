@@ -87,6 +87,7 @@
     <button class="ghost" onclick={() => go('recipes')}>📖 Saved recipes</button>
     <button class="ghost" onclick={() => (ui.receipt = true)}>🧾 Scan a receipt</button>
     <button class="ghost" onclick={() => go('prices')}>💲 Prices</button>
+    {#if app.isAdmin}<button class="ghost" onclick={() => go('admin')}>📊 Dashboards</button>{/if}
   </div>
   <div class="seg" style="margin:6px 0 4px">
     {#each [['settings', 'Settings'], ['history', 'History'], ['stores', 'Stores']] as [k, l]}<button class:on={tab === k} onclick={() => (tab = k)}>{l}</button>{/each}
@@ -161,7 +162,7 @@
     </div>
 
     <div class="card">
-      <h3>Meal preferences</h3>
+      <h3>Food preferences</h3>
       <MealPrefs />
     </div>
 

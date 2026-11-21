@@ -1,10 +1,10 @@
 <script>
-  import { app, toast } from '../lib/db.svelte.js';
+  import { app, toast, track } from '../lib/db.svelte.js';
   import { orderInstacart, orderAmazon, orderWalmart, copyAndOpen, shareList, STORES_LINKS } from '../lib/order.js';
   let { title, lines, go = null } = $props();
   let busy = $state(''), err = $state(''), note = $state('');
   async function order(how) {
-    err = ''; note = ''; busy = how;
+    err = ''; note = ''; busy = how; track('order_click', { store: how });
     try {
       if (how === 'instacart') { const r = await orderInstacart(title, lines); if (r.test) toast('Opened Instacart’s test site — use a live key for real orders'); }
       else if (how === 'amazon') { if (orderAmazon(lines) === 'copy') { await copyAndOpen(title, lines, STORES_LINKS.amazon); toast('✓ List copied — paste it into Amazon Fresh search'); } }

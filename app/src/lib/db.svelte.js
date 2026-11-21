@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS = {
 export const app = $state({ pantry: [],
   ready: false, session: null, user: null, household: null, error: '', toast: '',
   settings: { ...DEFAULT_SETTINGS }, stores: [], items: [], prices: {}, recipes: [], plan: { household: 3, days: [] }, purchases: [],
-  members: [], invites: [], hasSerpKey: false, hasInstacartKey: false, households: [], myInvites: [], pendingJoin: null, weeks: [], carts: [], serpUsage: { n: 0, limit: 230 }, plus: false, canPay: false, canWalmart: false
+  members: [], invites: [], hasSerpKey: false, hasInstacartKey: false, households: [], myInvites: [], pendingJoin: null, weeks: [], carts: [], serpUsage: { n: 0, limit: 230 }, plus: false, canPay: false, canWalmart: false, isAdmin: false
 });
 
 /* ---------------- derived helpers ---------------- */
@@ -122,6 +122,15 @@ export async function backfillImages() {
     if (img) { r.image = img; await sb.from('recipes').update({ image: img }).eq('id', r.id).eq('household_id', app.household); }
   }
 }
+/** Usage analytics: a named event with a few details, kept in our own database (batched, never blocks the app). */
+let evq = [], evt = 0;
+export function track(name, props = {}) {
+  if (!app.user) return;
+  evq.push({ name, props, app_version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null });
+  clearTimeout(evt); evt = setTimeout(flushEvents, 1500);
+}
+function flushEvents() { const rows = evq.splice(0); if (rows.length) sb.from('events').insert(rows).then(() => {}, () => {}); }
+if (typeof window !== 'undefined') window.addEventListener('pagehide', flushEvents);
 /** Clear this week's plan (saved recipes stay). */
 export async function deletePlan() {
   const { weeks: _old, ...rest } = app.plan;
@@ -157,6 +166,8 @@ async function boot() {
     await loadAll();
     loadHouseholds();
     setTimeout(() => backfillImages().catch(() => {}), 4000);
+    track('app_open', { native: !!(typeof __NATIVE__ !== 'undefined' && __NATIVE__) });
+    sb.rpc('is_admin').then(({ data }) => (app.isAdmin = !!data));
     checkPendingJoin();
     subscribe();
   } catch (e) { app.error = String(e.message || e); }
@@ -462,6 +473,7 @@ export async function importBareMinimum(slug) {
 /** Save recipes found online (a recipe link or the recipe finder) into your library, switched off until you pick them. */
 export async function importRecipes(parsedList, prefix = 'web') {
   const out = [];
+  parsedList.forEach(() => track('recipe_saved', { via: prefix === 'mdb' ? 'finder' : 'link' }));
   for (const parsed of parsedList) {
     const built = buildImport(parsed, app.items.map((i) => ({ id: i.id, name: i.name, qty: i.qty, units: i.units })), prefix);
     const newItems = built.items.filter((i) => i.isNew);

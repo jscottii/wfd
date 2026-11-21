@@ -1,5 +1,6 @@
 // Trip planning: nearest stores + drive times (free maps) → optimizer → route line.
 import { app, need, toast, owned } from './db.svelte.js';
+import { track } from './db.svelte.js';
 import { nearestAndMatrix, routeLine, geocode, haversineMi } from './maps.js';
 import { planTrips } from './optimizer.js';
 import { scalePrices } from './planner.js';
@@ -66,6 +67,7 @@ export async function planTrip() {
     res.itemCount = items.length;
     res.alreadyHave = app.items.filter((i) => n[i.id] > 0 && owned(i)).map((i) => i.id);
     trip.result = res; trip.choice = 'best'; trip.when = Date.now();
+    track('trip_planned', { items: items.length });
     await drawLine();
   } catch (e) {
     trip.error = String(e.message || e);

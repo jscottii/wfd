@@ -178,5 +178,5 @@
     </div>
   {/if}
   {/if}
-  <AdSlot />
+  <AdSlot slot="shop" format="banner" />
 </div>

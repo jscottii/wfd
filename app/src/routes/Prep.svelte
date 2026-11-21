@@ -5,7 +5,7 @@
 <script>
   import Dish from '../components/Dish.svelte';
   import { untrack } from 'svelte';
-  import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep, saveSettings, currentHousehold } from '../lib/db.svelte.js';
+  import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep, saveSettings, currentHousehold, track } from '../lib/db.svelte.js';
   import { ui, openCart } from '../lib/ui.svelte.js';
   import { usedByRecipes } from '../lib/pantry.js';
   import { scaleLine, scaleStepHtml, prepLists, cookMinutes, alignSteps, isPrepStep, durationOf, equipmentFor, stepMinutes, fmtMins, scaleTime, pansOf, estimateMins, isCutOnly } from '../lib/cookday.js';
@@ -31,11 +31,12 @@
   const big = $derived(app.settings.audience === 'group' || !!cart);
   // one meal at a time, or the whole week's prep in one go
   const prepStyle = $derived(app.settings.prepStyle || 'single');
+  $effect(() => { if (allRecipes.length) untrack(() => track('prep_open', { style: prepStyle, group: big, cart: !!cart, recipes: allRecipes.length })); });
   function setStyle(v) { saveSettings({ prepStyle: v }).catch(() => {}); mode = v === 'single' && !big ? 'simple' : 'steps'; }
   let focusId = $state('');
   // freezer meals: which recipes get packed for the freezer
   let freezeSel = $derived(ctx.freezer || {});
-  const toggleFreeze = (id) => patchCtx({ freezer: { ...freezeSel, [id]: !freezeSel[id] } }).catch((e) => (err = e.message));
+  const toggleFreeze = (id) => { if (!freezeSel[id] && prepStyle === 'single' && !big) setStyle('full'); patchCtx({ freezer: { ...freezeSel, [id]: !freezeSel[id] } }).catch((e) => (err = e.message)); };
   // this week's recipes: on the plan, or switched on
   let allRecipes = $derived.by(() => {
     if (cart) return (cart.recipes || []).map((x) => app.recipes.find((r) => r.id === x.id)).filter(Boolean);
@@ -342,10 +343,10 @@
     {#if big && prepStyle === 'single' && allRecipes.length > 1}
       <p class="sentence small" style="margin:0 0 8px">Cooking now: <select class="inl" value={recipes[0]?.id} onchange={(e) => { focusId = e.currentTarget.value; at = 0; }}>{#each allRecipes as r}<option value={r.id}>{r.title}</option>{/each}</select></p>
     {/if}
-    {#if prepStyle === 'full' || big}
-      <details class="small" style="margin:0 0 8px" open={Object.values(freezeSel).some(Boolean)}>
+    {#if true}
+      <details class="small freezer-pick" style="margin:0 0 8px" open={Object.values(freezeSel).some(Boolean)}>
         <summary>🧊 Make freezer meals {Object.values(freezeSel).filter(Boolean).length ? `(${Object.values(freezeSel).filter(Boolean).length})` : ''}</summary>
-        <p class="muted" style="margin:6px 0 4px">Pick what to pack for the freezer — you'll get a step for cooling, portioning, labeling and reheating.</p>
+        <p class="muted" style="margin:6px 0 4px">Cook extra and freeze it for later. Pick what to pack — Full meal prep adds a step for cooling, portioning, labeling and reheating.{#if prepStyle === 'single' && !big} Picking one switches you to Full meal prep.{/if}</p>
         <div class="row" style="gap:4px">{#each allRecipes as r}
           {#if canFreeze(r)}<button class="chip" class:on={freezeSel[r.id]} onclick={() => toggleFreeze(r.id)}>{freezeSel[r.id] ? '🧊 ' : ''}{shortTitle(r.title)}</button>
           {:else}<span class="chip" style="opacity:.5" title="Doesn't freeze well">{shortTitle(r.title)} · fridge only</span>{/if}

@@ -20,11 +20,12 @@
   import More from './routes/More.svelte';
   import TimerDock from './components/TimerDock.svelte';
   import Onboarding from './components/Onboarding.svelte';
+  import Admin from './routes/Admin.svelte';
   let showOnboard = $state(false), onboardDismissed = $state(false);
   $effect(() => { if (app.ready && app.household && app.session && (!app.settings.onboarded || !app.settings.homeSet) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
 
   const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['more', '☰', 'More']];
-  const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices'];
+  const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices', 'admin'];
   let page = $state(PAGES.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'plan');
   function go(p) { page = p; history.replaceState(null, '', '#' + p); window.scrollTo(0, 0); }
   $effect(() => { const f = () => { const h = location.hash.slice(1); if (PAGES.includes(h)) page = h; else if (h === 'receipt') ui.receipt = true; }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); });
@@ -65,6 +66,7 @@
     {:else if page === 'recipes'}<Recipes {go} />
     {:else if page === 'prices'}<Prices {go} />
     {:else if page === 'more'}<More {go} />
+    {:else if page === 'admin' && app.isAdmin}<Admin />
     {:else if page === 'trip'}<Trip {go} />
     {:else}<Plan {go} />{/if}
   {/key}
