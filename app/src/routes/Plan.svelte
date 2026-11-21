@@ -1,7 +1,8 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
-  import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned, track } from '../lib/db.svelte.js';
-  import { pickMix, recipesNeeded } from '../lib/mix.js';
+  import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
+  import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
+  import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
   import Dish from '../components/Dish.svelte';
   const prefs = $derived(prefsOf(app.settings));
@@ -27,16 +28,10 @@
   let shape = $state({ meals: ['lunch', 'dinner'], snack: false, from: 0, to: 4, ...(app.plan.shape || app.settings.planShape || {}) });
   function autoFill(recipes, household) {
     household = Math.max(1, Number(household) || 1);
-    const on = new Set([...shape.meals, ...(shape.snack ? ['snack'] : [])]);
     const all = DAYS.map((d) => ({ day: d, people: household, breakfast: '', lunch: '', dinner: '', snack: '' }));
-    const grid = all.slice(shape.from, shape.to + 1), g = { breakfast: [], snack: [], main: [] };
+    const g = { breakfast: [], snack: [], main: [] };
     recipes.forEach((r) => g[kind(r)].push(r));
-    ['breakfast', 'snack'].forEach((k) => on.has(k) && g[k].length && grid.forEach((d, i) => (d[k] = g[k][i % g[k].length].id)));
-    const q = g.main.map((r) => ({ id: r.id, left: Math.max(1, Math.round((Number(r.servings) || household) / household)) }));
-    const slots = [...(on.has('dinner') ? grid.map((d) => [d, 'dinner']) : []), ...(on.has('lunch') ? grid.map((d) => [d, 'lunch']) : [])];
-    let qi = 0;
-    slots.forEach((sl) => { for (let t = 0; t < q.length; t++) { const x = q[qi++ % q.length]; if (x.left > 0) { sl[0][sl[1]] = x.id; x.left--; return; } } });
-    if (!on.has('breakfast')) grid.forEach((d) => (d.breakfast = ''));
+    placeRecipes(all.slice(shape.from, shape.to + 1), g, shape.meals, shape.snack);
     return all;
   }
   function reshape(patch) {
@@ -85,15 +80,51 @@
   function setHousehold(v) { const nv = Math.max(1, Number(v) || 1); days.forEach((d) => { if (Number(d.people) === Number(household)) d.people = nv; }); household = nv; }
   // how to choose this week's recipes
   let how = $state(''), usePantry = $state(null), mixInfo = $state(null);
-  let needN = $derived(recipesNeeded(shape, household, app.recipes));
-  function pickForMe() {
-    how = 'auto'; track('pick_for_me');
-    const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
-    const pantryIds = new Set(app.pantry.filter((p) => p.item_id && !['low', 'out'].includes(p.level)).map((p) => p.item_id));
-    const r = pickMix({ recipes: app.recipes.filter((x) => !clash(x).any), need: needN, pantryIds, liked: app.settings.cuisines || [], recent, usePantry: !!usePantry });
-    sel = Object.fromEntries(r.ids.map((id) => [id, true]));
-    days = autoFill(picked, household); manual = false;
-    mixInfo = r;
+  let needN = $derived(recipesNeeded(shape));
+  // Pick for me: cuisines for this week (starts from your favorites), then a mix from saved recipes —
+  // and if those run short, new recipes in those cuisines are found and saved
+  let autoCuisines = $state([...(app.settings.cuisines || [])]), topping = $state('');
+  const areasOf = (cs) => cs.flatMap((c) => (CUISINES.find((x) => x[0] === c) || [c, [c]])[1]).map((a) => a.toLowerCase());
+  const inCuisines = (r, cs) => !cs.length || areasOf(cs).some((a) => String(r.cuisine || '').toLowerCase() === a);
+  async function topUp(needKind, have, cs) {
+    // find + save enough new recipes of one kind
+    const missing = needKind - have.length; if (missing <= 0) return [];
+    const veg = prefs.diets.includes('Vegan') ? ['Vegan'] : prefs.diets.includes('Vegetarian') ? ['Vegetarian', 'Vegan'] : [];
+    let ideas = kindFor === 'breakfast' ? await findIdeas({ types: ['Breakfast'] }) : await findIdeas({ cuisines: cs.length ? cs : ['American', 'Italian', 'Mexican', 'Chinese'], types: veg });
+    const saved = new Set(app.recipes.map((r) => r.title.toLowerCase()));
+    ideas = ideas.filter((i) => !saved.has(i.title.toLowerCase()));
+    const out = [];
+    for (const i of ideas) {
+      if (out.length >= missing) break;
+      topping = `Finding ${missing - out.length} more recipe${missing - out.length === 1 ? '' : 's'}…`;
+      const m = await mealDetail(i.id);
+      if (kindFor === 'main' && /dessert|side|starter|breakfast/i.test(m.strCategory)) continue;
+      const parsed = fromMealDb(m);
+      if (clash({ title: m.strMeal, ing: parsed.recipes[0].ing }).any) continue;
+      const [r] = await importRecipes([parsed], 'mdb'); out.push(r);
+    }
+    return out;
+  }
+  let kindFor = 'main';
+  async function pickForMe() {
+    how = 'auto'; track('pick_for_me', { cuisines: autoCuisines.length }); err = '';
+    try {
+      const ok = (x) => !clash(x).any && inCuisines(x, autoCuisines);
+      let pool = app.recipes.filter((x) => ok(x) || (kind(x) !== 'main' && !clash(x).any));
+      for (const k of ['main', 'breakfast']) {
+        if (!needN[k]) continue;
+        kindFor = k;
+        const have = pool.filter((x) => kind(x) === k);
+        pool = [...pool, ...(await topUp(needN[k], have, autoCuisines))];
+      }
+      topping = '';
+      const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
+      const pantryIds = new Set(app.pantry.filter((p) => p.item_id && !['low', 'out'].includes(p.level)).map((p) => p.item_id));
+      const r = pickMix({ recipes: pool, need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry });
+      sel = Object.fromEntries(r.ids.map((id) => [id, true]));
+      days = autoFill(picked, household); manual = false;
+      mixInfo = r;
+    } catch (e) { err = e.message; topping = ''; }
   }
   async function removePlan() {
     if (!confirm('Delete this week’s plan? Your saved recipes stay.')) return;
@@ -157,7 +188,7 @@
 
   <div class="card">
     <h3 style="margin:0">What's for dinner this week?</h3>
-    <p class="small muted" style="margin:4px 0 8px">You'll need about {needN.main} main recipe{needN.main === 1 ? '' : 's'}{needN.breakfast ? ', a breakfast' : ''}{needN.snack ? ', a snack' : ''} — the rest is leftovers.</p>
+    <p class="small muted" style="margin:4px 0 8px">That's {needN.main} lunch/dinner recipe{needN.main === 1 ? '' : 's'}{needN.breakfast ? `, ${needN.breakfast} breakfast${needN.breakfast === 1 ? '' : 's'}` : ''}{needN.snack ? `, ${needN.snack} snack${needN.snack === 1 ? '' : 's'}` : ''} — each one cooked once and eaten up to twice.</p>
     {#if app.pantry.length}
       <p class="small" style="margin:0 0 8px">Cook from what's in your pantry first?
         <button class="chip" class:on={usePantry === true} onclick={() => { usePantry = true; if (how === 'auto') pickForMe(); }}>Yes</button>
@@ -186,7 +217,10 @@
       </div>
     {:else if how === 'auto'}
       <div style="margin-top:10px">
-        {#if mixInfo}<p class="small muted" style="margin:0 0 6px">{mixInfo.shared ? `These share ${mixInfo.shared} ingredient${mixInfo.shared === 1 ? '' : 's'}, so there's less to buy and waste` : 'Picked for variety'}, and mix up proteins and styles across the week.{#if mixInfo.short.main} You only have {needN.main - mixInfo.short.main} main recipe{needN.main - mixInfo.short.main === 1 ? '' : 's'} saved — tap “I'll pick” to find more.{/if}</p>{/if}
+        <p class="small" style="margin:0 0 4px"><b>Cuisines this week</b> <span class="muted">(pick any — none means anything goes)</span></p>
+        <div class="row" style="gap:4px;margin-bottom:8px">{#each CUISINES as [c]}<button class="chip" class:on={autoCuisines.includes(c)} onclick={() => { autoCuisines = autoCuisines.includes(c) ? autoCuisines.filter((x) => x !== c) : [...autoCuisines, c]; pickForMe(); }}>{autoCuisines.includes(c) ? '✓ ' : ''}{c}</button>{/each}</div>
+        {#if topping}<p class="small muted"><span class="spinner"></span> {topping}</p>{/if}
+        {#if mixInfo && !topping}<p class="small muted" style="margin:0 0 6px">{picked.length} recipes, each eaten at most twice (cooked once, leftovers once). {mixInfo.shared ? `They share ${mixInfo.shared} ingredient${mixInfo.shared === 1 ? '' : 's'}, so there's less to buy and waste,` : 'Picked for variety,'} with different proteins and styles day to day.{#if mixInfo.short.main} Not enough recipes matched — try more cuisines.{/if}</p>{/if}
         {#each picked as r (r.id)}
           <div class="list-row"><div class="grow"><b class="small">{r.title}</b><div class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</div></div><button class="quiet" onclick={() => toggle(r.id)} aria-label="Remove">✕</button></div>
         {/each}

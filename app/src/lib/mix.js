@@ -42,11 +42,45 @@ export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], rece
     shared: [...pool].filter((id) => chosen.filter((x) => x.items.has(id)).length > 1).length };
 }
 
-/** How many different recipes a week needs: mains so leftovers don't repeat more than ~2 days. */
-export function recipesNeeded(shape, people, recipes) {
-  const days = shape.to - shape.from + 1;
-  const mainMeals = days * shape.meals.filter((m) => m !== 'breakfast').length;
-  const avgServ = (() => { const v = recipes.filter((r) => kindOf(r) === 'main').map((r) => Number(r.servings) || 4); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 4; })();
-  const mealsPerRecipe = Math.max(1, Math.min(3, Math.round(avgServ / Math.max(1, people))));
-  return { main: Math.max(1, Math.min(6, Math.ceil(mainMeals / Math.max(mealsPerRecipe, 2)))), breakfast: shape.meals.includes('breakfast') ? 1 : 0, snack: shape.snack ? 1 : 0 };
+// Meal slots in time order, and which of them can be followed by a leftover meal: a dinner's leftovers are the
+// next day's lunch; with one kind of meal (just dinners, breakfasts…) a meal's leftovers are the next day's.
+function mainSlots(grid, meals) {
+  const ms = ['lunch', 'dinner'].filter((m) => meals.includes(m));
+  const slots = grid.flatMap((d) => ms.map((m) => [d, m]));
+  const pairs = [];
+  if (ms.length === 2) { for (let i = 0; i < slots.length - 1; i++) if (slots[i][1] === 'dinner') pairs.push(i); }
+  else for (let i = 0; i + 1 < slots.length; i += 2) pairs.push(i);
+  return { slots, pairs };
+}
+function daySlots(grid, m) { const slots = grid.map((d) => [d, m]); const pairs = []; for (let i = 0; i + 1 < slots.length; i += 2) pairs.push(i); return { slots, pairs }; }
+
+/** How many different recipes a week needs: every recipe is eaten at most twice (cooked once, leftovers once). */
+export function recipesNeeded(shape) {
+  const grid = Array.from({ length: shape.to - shape.from + 1 }, () => ({}));
+  const m = mainSlots(grid, shape.meals), b = daySlots(grid, 'breakfast');
+  return { main: Math.max(1, m.slots.length - m.pairs.length), breakfast: shape.meals.includes('breakfast') ? b.slots.length - b.pairs.length : 0, snack: shape.snack ? b.slots.length - b.pairs.length : 0 };
+}
+
+/**
+ * Place recipes into the week. Each recipe appears at most twice, and only forward in time: cooked, then eaten
+ * once more at the next meal (tonight's dinner → tomorrow's lunch). Extra recipes mean fewer leftover meals.
+ */
+export function placeRecipes(grid, byKind, meals, snack) {
+  const fill = ({ slots, pairs }, list) => {
+    if (!slots.length || !list.length) return;
+    let use = Math.max(0, Math.min(pairs.length, slots.length - list.length));   // leftover meals we need
+    const pairAt = new Set(pairs.slice(0, use));
+    let j = 0;
+    for (let i = 0; i < slots.length; i++) {
+      const [d, m] = slots[i];
+      if (d[m]) continue;
+      const r = list[j++ % list.length];
+      d[m] = r.id;
+      if (pairAt.has(i) && slots[i + 1]) { const [d2, m2] = slots[i + 1]; d2[m2] = r.id; }
+    }
+  };
+  grid.forEach((d) => { ['breakfast', 'lunch', 'dinner', 'snack'].forEach((m) => (d[m] = '')); });
+  fill(mainSlots(grid, meals), byKind.main || []);
+  if (meals.includes('breakfast')) fill(daySlots(grid, 'breakfast'), byKind.breakfast || []);
+  if (snack) fill(daySlots(grid, 'snack'), byKind.snack || []);
 }

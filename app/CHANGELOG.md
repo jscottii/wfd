@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.2.0 — Nov 21, 2026
+- Pick for me: choose cuisines for the week (starts from your favorites); finds and saves new recipes when saved ones run short.
+- Every recipe is eaten at most twice: cooked once, leftovers once at the next meal (tonight's dinner → tomorrow's lunch).
+
 ## 1.1.0 — Nov 21, 2026
 - Dietary needs (Diabetes-friendly, Heart-healthy, Low-sodium, Low-FODMAP, Low-fat, Kidney-friendly, Pregnancy-safe), Halal, Kosher, High-protein; "not medical advice" note.
 - Owner dashboards: usage, ads, data storage; first-party usage analytics.
