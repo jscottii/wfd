@@ -1,12 +1,15 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+const built = new Date().toISOString().slice(0, 10);
 
 // `vite build --mode native` makes the copy that ships inside the iPhone/Android app (no service worker, relative paths)
 export default defineConfig(({ mode }) => ({
   base: mode === 'native' ? './' : '/wfd/',
   build: mode === 'native' ? { outDir: 'dist-native' } : {},
-  define: { __NATIVE__: JSON.stringify(mode === 'native') },
+  define: { __NATIVE__: JSON.stringify(mode === 'native'), __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_DATE__: JSON.stringify(built) },
   plugins: [
     svelte(),
     mode !== 'native' && VitePWA({

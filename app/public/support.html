@@ -1,10 +1,27 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Support · WFD — What's for Dinner</title>
-<style>body{font:16px/1.6 system-ui,-apple-system,sans-serif;max-width:720px;margin:0 auto;padding:32px 20px;color:#2b2420;background:#f7f3ec}h1{font-family:Georgia,serif}h2{font-size:18px;margin-top:28px}a{color:#1f5fd1}</style></head>
+<style>body{font:16px/1.6 system-ui,-apple-system,sans-serif;max-width:720px;margin:0 auto;padding:32px 20px;color:#1b2433;background:#f6f4ee}h1{font-family:Georgia,serif}h2{font-size:18px;margin-top:28px}a{color:#1f5fd1}</style></head>
 <body>
 <h1>WFD Support</h1>
-<p>Need help? Email <a href="mailto:jonathan.iiscott@gmail.com">jonathan.iiscott@gmail.com</a> and we'll reply within two business days.</p>
+<p>Need help, found a bug, or have an idea? Use <b>Contact us</b> at the bottom of <b>More</b> in the app, or the form below. Add your email if you'd like a reply.</p>
+<form id="f" style="background:#fff;border:1px solid #e2e1da;border-radius:12px;padding:16px">
+  <label>What's it about?<br><select name="kind" style="width:100%;padding:8px;margin:4px 0 10px"><option value="help">I need help</option><option value="bug">Something's broken</option><option value="idea">Idea</option><option value="feedback">Feedback</option></select></label>
+  <label>Message<br><textarea name="message" rows="5" required minlength="2" maxlength="4000" style="width:100%;padding:8px;margin:4px 0 10px;box-sizing:border-box"></textarea></label>
+  <label>Your email (optional, for a reply)<br><input name="reply_to" type="email" maxlength="200" style="width:100%;padding:8px;margin:4px 0 12px;box-sizing:border-box"></label>
+  <button style="background:#1f5fd1;color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700">Send</button>
+  <p id="msg" style="margin:10px 0 0"></p>
+</form>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault(); const f = e.target, m = document.getElementById('msg');
+  const body = { kind: f.kind.value, message: f.message.value.trim(), reply_to: f.reply_to.value.trim() || null, page: 'support' };
+  m.textContent = 'Sending…';
+  const r = await fetch('https://osyhpifmegqotdfdlave.supabase.co/rest/v1/feedback', { method: 'POST', headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zeWhwaWZtZWdxb3RkZmRsYXZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5ODUzNjksImV4cCI6MjExMDU2MTM2OX0.0TuNBUobM0j6cgJQrtiWdTpXoCoiOftxwn_rmfyLPxg', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zeWhwaWZtZWdxb3RkZmRsYXZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5ODUzNjksImV4cCI6MjExMDU2MTM2OX0.0TuNBUobM0j6cgJQrtiWdTpXoCoiOftxwn_rmfyLPxg', 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+  m.textContent = r.ok ? '✓ Thanks — we got it.' : 'Sorry, that didn’t send. Please try again in a minute.';
+  if (r.ok) f.reset();
+});
+</script>
 
 <h2>Common questions</h2>
 <p><b>I forgot my password.</b> On the sign-in screen tap <b>Forgot password?</b>. We email you a 6-digit code; enter it with your new password.</p>

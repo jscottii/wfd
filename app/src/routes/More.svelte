@@ -4,6 +4,7 @@
   import { findLocalChains } from '../lib/maps.js';
   import { ui } from '../lib/ui.svelte.js';
   import MealPrefs from '../components/MealPrefs.svelte';
+  import Feedback from '../components/Feedback.svelte';
   import { instacartStores } from '../lib/order.js';
   import { STRIPE_PAYMENT_LINK, STRIPE_PORTAL_LINK, PLUS_PRICE } from '../lib/config.js';
   import { isNative } from '../lib/native.js';
@@ -280,5 +281,10 @@
       {/if}
     </div>
   {/if}
-  <p class="small muted" style="text-align:center;margin-top:20px"><a href="https://jscottii.github.io/wfd/privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="https://jscottii.github.io/wfd/support.html" target="_blank" rel="noopener">Help &amp; support</a></p>
+  <div class="card" id="contact" style="margin-top:16px">
+    <h3>Contact us</h3>
+    <p class="small muted" style="margin-top:0">Questions, bugs or ideas — send them here.</p>
+    <Feedback />
+  </div>
+  <p class="small muted" style="text-align:center;margin-top:20px"><a href="https://jscottii.github.io/wfd/privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="https://jscottii.github.io/wfd/support.html" target="_blank" rel="noopener">Help</a> · <a href="#contact" onclick={(e) => { e.preventDefault(); document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }); }}>Contact us</a> · WFD v{__APP_VERSION__} <span title="Build date">({__BUILD_DATE__})</span></p>
 </div>
