@@ -10,7 +10,7 @@ import { titleMatches_ } from './optimizer.js';
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
 
 export const DEFAULT_SETTINGS = {
-  audience: 'household', units: 'imperial', homeAddress: HOME_DEFAULT, mpg: 28, gasPrice: 5.6, timeValue: 5, stopMinutes: 12, maxStores: 3,
+  audience: 'household', units: 'imperial', storeRadius: 25, homeAddress: HOME_DEFAULT, mpg: 28, gasPrice: 5.6, timeValue: 5, stopMinutes: 12, maxStores: 3,
   costcoMember: false, costcoMode: 'pack', enabledStores: ['sbf', 'tj', 'tgt', 'lucky', 'raleys', 'costco'],
   householdSize: 3, nearestStores: true, serpMonthlyLimit: 230, serpLocation: '', pantry: PANTRY_CHECK, sourceUrl: SOURCE_URL
 };
@@ -35,9 +35,9 @@ const daysAgo = (d) => (d ? (Date.now() - new Date(d).getTime()) / 864e5 : Infin
 /* ---------------- row ↔ app shape ---------------- */
 const toItem = (r) => ({ id: r.id, cat: r.cat, name: r.name, qty: r.qty, q: r.q, must: r.must || [], units: Number(r.units) || 1, have: !!r.have_on, haveOn: r.have_on || '' });
 const toRecipe = (r) => ({ id: r.id, title: r.title, active: r.active, servings: Number(r.servings) || 0, yield: r.yield || '', when: r.meal || '', fridge: r.fridge || '', freeze: r.freeze || '',
-  ing: r.ing || [], steps: r.steps || [], tip: r.tip || '', custom: r.custom, source: r.source || '', cuisine: r.cuisine || '', calories: Number(r.calories) || 0, items: r.items || {}, createdAt: r.created_at });
+  ing: r.ing || [], steps: r.steps || [], tip: r.tip || '', custom: r.custom, source: r.source || '', cuisine: r.cuisine || '', calories: Number(r.calories) || 0, image: r.image || '', items: r.items || {}, createdAt: r.created_at });
 const fromRecipe = (r) => ({ id: r.id, title: r.title, active: !!r.active, servings: Number(r.servings) || null, yield: r.yield || '', meal: r.when || '', fridge: r.fridge || '', freeze: r.freeze || '',
-  ing: r.ing || [], steps: r.steps || [], tip: r.tip || '', custom: !!r.custom, source: r.source || '', cuisine: r.cuisine || null, ...(Number(r.calories) ? { calories: Number(r.calories) } : {}), items: r.items || {} });
+  ing: r.ing || [], steps: r.steps || [], tip: r.tip || '', custom: !!r.custom, source: r.source || '', cuisine: r.cuisine || null, ...(Number(r.calories) ? { calories: Number(r.calories) } : {}), ...(r.image ? { image: r.image } : {}), items: r.items || {} });
 function setPrice(row) {
   const e = (app.prices[row.item_id] = app.prices[row.item_id] || {});
   e[row.store_id] = { price: row.price == null ? null : Number(row.price), unitPrice: row.unit_price, unitNeeded: row.unit_needed == null ? null : Number(row.unit_needed),
@@ -101,6 +101,27 @@ export async function patchPlan(patch) {
   if (error) fail(error);
   app.plan = plan;
 }
+/** Find photos for saved recipes that don't have one yet (recipe ideas by name; saved links from their page). */
+let imagesTried = false;
+export async function backfillImages() {
+  if (imagesTried) return; imagesTried = true;
+  const need = app.recipes.filter((r) => !r.image).slice(0, 25);
+  for (const r of need) {
+    let img = '';
+    try {
+      const name = r.title.replace(/\s*[(,].*$/, '').trim();
+      const j = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(name)}`).then((x) => x.json());
+      const hit = (j.meals || []).find((m) => m.strMeal.toLowerCase() === r.title.toLowerCase() || m.strMeal.toLowerCase() === name.toLowerCase());
+      if (hit) img = hit.strMealThumb;
+      if (!img && r.source && !/substack|bareminimum/i.test(r.source)) {
+        const p = await callProxy({ action: 'recipe-url', url: r.source }).catch(() => null);
+        const im = p?.recipes?.[0]?.image; img = (Array.isArray(im) ? im[0] : im)?.url || (Array.isArray(im) ? im[0] : im) || '';
+        if (typeof img !== 'string') img = '';
+      }
+    } catch { /* no photo is fine */ }
+    if (img) { r.image = img; await sb.from('recipes').update({ image: img }).eq('id', r.id).eq('household_id', app.household); }
+  }
+}
 /** Clear this week's plan (saved recipes stay). */
 export async function deletePlan() {
   const { weeks: _old, ...rest } = app.plan;
@@ -135,6 +156,7 @@ async function boot() {
     if (data.created) await seedHousehold();
     await loadAll();
     loadHouseholds();
+    setTimeout(() => backfillImages().catch(() => {}), 4000);
     checkPendingJoin();
     subscribe();
   } catch (e) { app.error = String(e.message || e); }
@@ -449,7 +471,7 @@ export async function importRecipes(parsedList, prefix = 'web') {
       rows.forEach((r) => { if (!app.items.some((x) => x.id === r.id)) app.items.push(toItem(r)); });
     }
     const src = parsed.recipes[0];
-    const recs = built.recipes.map((r) => fromRecipe({ ...r, active: false, source: src.url || '', cuisine: src.cuisine || '', calories: src.calories || null }));
+    const recs = built.recipes.map((r) => fromRecipe({ ...r, active: false, source: src.url || '', cuisine: src.cuisine || '', calories: src.calories || null, image: src.image || '' }));
     const { error } = await sb.from('recipes').upsert(recs.map((r) => ({ household_id: app.household, ...r })));
     if (error) fail(error);
     recs.forEach((r) => { const v = toRecipe(r); const k = app.recipes.findIndex((x) => x.id === r.id); if (k >= 0) app.recipes[k] = v; else app.recipes.push(v); out.push(v); });

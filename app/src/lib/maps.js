@@ -86,9 +86,9 @@ const PRICE_LEVEL = [[/aldi|lidl|winco|grocery outlet|food 4 less|save a lot|wal
 export const priceLevel = (name) => (PRICE_LEVEL.find(([re]) => re.test(name)) || [0, 1])[1];
 
 /** The grocery chains around an address: [{ brand, count, miles, near: {lat,lng,label}, bulk, level }] nearest first. */
-export async function findLocalChains(addr, known = []) {
+export async function findLocalChains(addr, known = [], radiusMi = 25) {
   const g = await geocode(addr);
-  const q = `[out:json][timeout:25];nwr["shop"~"^(supermarket|wholesale|grocery)$"](around:16000,${g.lat},${g.lng});out center tags;`;
+  const q = `[out:json][timeout:25];nwr["shop"~"^(supermarket|wholesale|grocery)$"](around:${Math.round(Math.min(50, Math.max(2, radiusMi)) * 1609)},${g.lat},${g.lng});out center tags;`;
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 45000);
   const ask = (ep) => fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent(q), signal: ctl.signal })
     .then((r) => r.json()).then((j) => { if (!j.elements) throw new Error(j.remark || 'no data'); return j; });
@@ -110,7 +110,7 @@ export async function findLocalChains(addr, known = []) {
   }
   return Object.values(by).map((b) => ({ ...b, bulk: /costco|sam'?s club|bj'?s/i.test(b.brand), level: priceLevel(b.brand),
     known: knownKeys.some((k) => chainKey(b.brand).startsWith(k) || k.startsWith(chainKey(b.brand))) }))
-    .sort((a, b) => a.miles - b.miles).slice(0, 14);
+    .filter((b) => b.miles <= radiusMi).sort((a, b) => a.miles - b.miles).slice(0, 20);
 }
 
 /** OSRM: durations (s) and distances (m) from each source to each destination. */

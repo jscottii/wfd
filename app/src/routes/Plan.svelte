@@ -2,6 +2,10 @@
   import AdSlot from '../components/AdSlot.svelte';
   import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned } from '../lib/db.svelte.js';
   import { pickMix, recipesNeeded } from '../lib/mix.js';
+  import { conflicts, prefsOf } from '../lib/diet.js';
+  import Dish from '../components/Dish.svelte';
+  const prefs = $derived(prefsOf(app.settings));
+  const clash = (r) => conflicts(r, prefs);
   import { rankByPantry, daysLeft } from '../lib/pantry.js';
   import Weeks from './Weeks.svelte';
   import Calendar from '../components/Calendar.svelte';
@@ -71,6 +75,7 @@
   let useSoon = $derived(app.pantry.filter((p) => { const d = daysLeft(p.use_by); return d != null && d <= 3; }));
   let showPantry = $state(true);
 
+  let slotPick = $state(null);   // { day, meal } being changed
   let manual = $state(!!app.plan.days?.length);   // you placed meals yourself (or a saved plan), so don't reshuffle them
   function toggle(id) {
     if (sel[id]) { delete sel[id]; days.forEach((d) => SLOTS.forEach((s) => d[s] === id && (d[s] = ''))); } else sel[id] = true;
@@ -85,7 +90,7 @@
     how = 'auto';
     const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
     const pantryIds = new Set(app.pantry.filter((p) => p.item_id && !['low', 'out'].includes(p.level)).map((p) => p.item_id));
-    const r = pickMix({ recipes: app.recipes, need: needN, pantryIds, liked: app.settings.cuisines || [], recent, usePantry: !!usePantry });
+    const r = pickMix({ recipes: app.recipes.filter((x) => !clash(x).any), need: needN, pantryIds, liked: app.settings.cuisines || [], recent, usePantry: !!usePantry });
     sel = Object.fromEntries(r.ids.map((id) => [id, true]));
     days = autoFill(picked, household); manual = false;
     mixInfo = r;
@@ -194,29 +199,50 @@
   {#if picked.length}
     <div class="card">
       <h3 style="margin:0">Which meal, which day</h3>
-      <p class="small muted" style="margin:4px 0 8px">We spread them out for you — change any meal. {manual ? '' : 'Leftovers fill the gaps.'}</p>
-      <div class="sched">
-        {#each days.slice(shape.from, shape.to + 1) as d}
-          <div class="sched-day">
-            <b class="small">{d.day.slice(0, 3)}</b>
-            {#each [...shape.meals, ...(shape.snack ? ['snack'] : [])] as m}
-              <label class="small sched-slot"><span class="muted">{m[0].toUpperCase() + m.slice(1)}</span>
-                <select value={d[m]} onchange={(e) => { d[m] = e.currentTarget.value; manual = true; }}><option value="">— nothing / eating out</option>{#each opts(m) as r}<option value={r.id}>{short(r)}</option>{/each}</select></label>
-            {/each}
+      <p class="small muted" style="margin:4px 0 10px">We spread your recipes out — tap any meal to change it. <span class="pill">leftovers</span> means you cooked it earlier in the week.</p>
+      <div class="week">
+        {#each days.slice(shape.from, shape.to + 1) as d, di}
+          <div class="wday">
+            <div class="wday-name">{d.day.slice(0, 3)}</div>
+            <div class="wslots">
+              {#each [...shape.meals, ...(shape.snack ? ['snack'] : [])] as m}
+                {@const r = d[m] ? recipeById(d[m]) : null}
+                {@const before = r && days.slice(shape.from, shape.from + di).some((x) => SLOTS.some((s) => x[s] === r.id))}
+                <button class="wslot" class:empty={!r} onclick={() => (slotPick = { day: d.day, meal: m })}>
+                  <span class="small muted wmeal">{m[0].toUpperCase() + m.slice(1)}</span>
+                  {#if r}
+                    <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}</span></span>
+                  {:else}<span class="small muted">— eating out / nothing</span>{/if}
+                </button>
+              {/each}
+            </div>
           </div>
         {/each}
       </div>
       {#if manual}<button class="quiet" onclick={() => { days = autoFill(picked, household); manual = false; }}>↺ Spread them out for me again</button>{/if}
     </div>
+    {#if slotPick}
+      {@const sd = days.find((x) => x.day === slotPick.day)}
+      <div class="sheet-back" role="presentation" onclick={() => (slotPick = null)}></div>
+      <div class="sheet plan-sheet" role="dialog" aria-label="Choose a meal">
+        <h3 style="margin:0 0 8px">{slotPick.day} · {slotPick.meal}</h3>
+        {#each opts(slotPick.meal).length ? opts(slotPick.meal) : picked as r (r.id)}
+          <button class="sheet-row" class:on={sd[slotPick.meal] === r.id} onclick={() => { sd[slotPick.meal] = r.id; manual = true; slotPick = null; }}>
+            <Dish {r} size={44} round={8} /><span class="grow"><b>{short(r)}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</span>{#if clash(r).any}<br><span class="warn small">⚠️ check ingredients</span>{/if}</span>
+          </button>
+        {/each}
+        <button class="sheet-row" class:on={!sd[slotPick.meal]} onclick={() => { sd[slotPick.meal] = ''; manual = true; slotPick = null; }}><span style="font-size:24px">🍴</span><span class="grow"><b>Eating out / nothing</b></span></button>
+      </div>
+    {/if}
   {/if}
 
   <div class="card">
     <h3 style="margin:0">Ready?</h3>
-    <p class="small muted" style="margin:4px 0 8px">{picked.length ? `${picked.length} recipe${picked.length === 1 ? '' : 's'} picked.` : 'Pick at least one recipe.'} <b>Save and start</b> builds your shopping list and clears last week's checkmarks (history is kept).</p>
+    <p class="small muted" style="margin:4px 0 8px">{picked.length ? `${picked.length} recipe${picked.length === 1 ? '' : 's'} picked.` : 'Pick at least one recipe.'} <b>Start</b> builds your shopping list and clears last week's checkmarks (history is kept).</p>
     <div class="row">
-      <button onclick={() => save(true)} disabled={saving || !picked.length}>{#if saving}<span class="spinner"></span>{/if} 🛒 Save and start</button>
-      <button class="ghost" onclick={() => save(false)} disabled={saving || !picked.length}>Save draft</button>
-      <button class="quiet" onclick={removePlan} disabled={saving}>Delete plan</button>
+      <button onclick={() => save(true)} disabled={saving || !picked.length}>{#if saving}<span class="spinner"></span>{/if} Start</button>
+      <button class="ghost" onclick={() => save(false)} disabled={saving || !picked.length}>Save Draft</button>
+      <button class="quiet" onclick={removePlan} disabled={saving}>Delete Plan</button>
     </div>
   </div>
   {/if}

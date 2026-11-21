@@ -2,6 +2,8 @@
   import { app, saveSettings, importRecipes, addLocalStores } from '../lib/db.svelte.js';
   import { hereAddress, findLocalChains, geocode } from '../lib/maps.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
+  import { conflicts, prefsOf } from '../lib/diet.js';
+  import MealPrefs from './MealPrefs.svelte';
   // First run (or anyone who hasn't done it): pick favorite cuisines → 15 starter meals in Saved recipes.
   let { go, onclose } = $props();
   // where home is comes first (trips start and end there, and it decides which stores are nearby)
@@ -15,20 +17,24 @@
       await saveSettings({ cuisines: liked });
       const have = new Set(app.recipes.map((r) => r.title.toLowerCase()));
       // mostly dinners from the cuisines you picked, plus a couple of breakfasts
-      const mains = (await findIdeas({ cuisines: liked.length ? liked : ['American', 'Italian', 'Mexican', 'Chinese'] })).filter((i) => !have.has(i.title.toLowerCase()));
+      const prefs = prefsOf(app.settings);
+      const veg = prefs.diets.includes('Vegan') ? ['Vegan'] : prefs.diets.includes('Vegetarian') ? ['Vegetarian', 'Vegan'] : prefs.diets.includes('Pescatarian') ? ['Vegetarian', 'Seafood'] : [];
+      const mains = (await findIdeas({ cuisines: liked.length ? liked : ['American', 'Italian', 'Mexican', 'Chinese'], types: veg })).filter((i) => !have.has(i.title.toLowerCase()));
+      if (veg.length && mains.length < 25) mains.push(...(await findIdeas({ types: veg })).filter((i) => !have.has(i.title.toLowerCase()) && !mains.some((x) => x.id === i.id)));
       const breakfasts = (await findIdeas({ types: ['Breakfast'] })).filter((i) => !have.has(i.title.toLowerCase())).slice(0, 2);
       // spread the picks evenly across the cuisines
       const byArea = {}; mains.forEach((m) => (byArea[m.area] = byArea[m.area] || []).push(m));
       const areas = Object.keys(byArea), queue = [];
       for (let i = 0; queue.length < TOTAL * 2 && areas.some((a) => byArea[a][i]); i++) areas.forEach((a) => byArea[a][i] && queue.push(byArea[a][i]));
       const out = [];
-      for (const b of breakfasts) { const m = await mealDetail(b.id); const [r] = await importRecipes([fromMealDb(m)], 'mdb'); out.push(r); prog = out.length; }
+      const clash = (m) => conflicts({ title: m.title || m.strMeal, ing: fromMealDb(m).recipes[0].ing }, prefs).any;
+      for (const b of breakfasts) { const m = await mealDetail(b.id); if (clash(m)) continue; const [r] = await importRecipes([fromMealDb(m)], 'mdb'); out.push(r); prog = out.length; }
       let desserts = 0;
       for (const q of queue) {
         if (out.length >= TOTAL) break;
         const m = await mealDetail(q.id);
         if (/dessert/i.test(m.strCategory) && desserts++ >= 1) continue;
-        if (/side|starter/i.test(m.strCategory)) continue;
+        if (/side|starter/i.test(m.strCategory) || clash(m)) continue;
         const [r] = await importRecipes([fromMealDb(m)], 'mdb'); out.push(r); prog = out.length;
       }
       made = out;
@@ -45,7 +51,7 @@
       await saveSettings({ homeAddress: addr.trim(), homeSet: true });
       // the grocery chains around you become your stores
       try {
-        const near = (await findLocalChains(addr, app.stores)).filter((b) => !b.known && b.miles <= 10).slice(0, 5);
+        const near = (await findLocalChains(addr, app.stores, Number(app.settings.storeRadius) || 25)).filter((b) => !b.known).slice(0, 6);
         if (near.length) { await addLocalStores(near); homeNote = `Added ${near.map((b) => b.brand).join(', ')} near you.`; }
       } catch { /* the store map can be busy; stores can be added later in More → Stores */ }
       if (app.settings.onboarded) { homeBusy = ''; step = 'homedone'; } else { homeBusy = ''; step = 'pick'; }
@@ -76,6 +82,8 @@
       <p class="small muted" style="margin-top:0">Pick your favorite cuisines and we'll start you off with {TOTAL} meals to plan from. You can change them any time.</p>
       {#if err}<div class="err small">⚠️ {err}</div>{/if}
       <div class="row" style="gap:4px">{#each CUISINES as [c]}<button class="chip" class:on={liked.includes(c)} onclick={() => toggle(c)}>{liked.includes(c) ? '♥ ' : ''}{c}</button>{/each}</div>
+      <h3 style="margin:16px 0 6px">Any diets or allergies?</h3>
+      <MealPrefs compact />
       <div class="row" style="margin-top:14px">
         <button onclick={build} disabled={!liked.length}>Get my {TOTAL} meals</button>
         <button class="quiet" onclick={skip}>Not now</button>

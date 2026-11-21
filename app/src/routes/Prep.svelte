@@ -3,14 +3,16 @@
 </script>
 
 <script>
+  import Dish from '../components/Dish.svelte';
   import { untrack } from 'svelte';
-  import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep } from '../lib/db.svelte.js';
+  import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep, saveSettings, currentHousehold } from '../lib/db.svelte.js';
   import { ui, openCart } from '../lib/ui.svelte.js';
   import { usedByRecipes } from '../lib/pantry.js';
   import { scaleLine, scaleStepHtml, prepLists, cookMinutes, alignSteps, isPrepStep, durationOf, equipmentFor, stepMinutes, fmtMins, scaleTime, pansOf, estimateMins, isCutOnly } from '../lib/cookday.js';
   import { unlockAudio, holdAwake } from '../lib/timers.js';
   import { tap } from '../lib/native.js';
   import Tonight from '../components/Tonight.svelte';
+  import { freezerPlan, canFreeze } from '../lib/freezer.js';
   let { go } = $props();
 
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -26,12 +28,22 @@
   let ctx = $derived(cart ? (cart.meta || {}) : app.plan);
   const patchCtx = (patch) => (cart ? patchCartMeta(cart.id, patch) : patchPlan(patch));
   const doPrep = (on, off, timers) => (cart ? updateCartPrep(cart.id, on, off, timers) : updatePrep(on, off, timers));
+  const big = $derived(app.settings.audience === 'group' || !!cart);
+  // one meal at a time, or the whole week's prep in one go
+  const prepStyle = $derived(app.settings.prepStyle || 'single');
+  function setStyle(v) { saveSettings({ prepStyle: v }).catch(() => {}); mode = v === 'single' && !big ? 'simple' : 'steps'; }
+  let focusId = $state('');
+  // freezer meals: which recipes get packed for the freezer
+  let freezeSel = $derived(ctx.freezer || {});
+  const toggleFreeze = (id) => patchCtx({ freezer: { ...freezeSel, [id]: !freezeSel[id] } }).catch((e) => (err = e.message));
   // this week's recipes: on the plan, or switched on
-  let recipes = $derived.by(() => {
+  let allRecipes = $derived.by(() => {
     if (cart) return (cart.recipes || []).map((x) => app.recipes.find((r) => r.id === x.id)).filter(Boolean);
     const onPlan = new Set(); (app.plan.days || []).forEach((d) => SLOTS.forEach((s) => d[s] && onPlan.add(d[s])));
     return app.recipes.filter((r) => onPlan.has(r.id) || r.active);
   });
+  // big group, one meal at a time: just the recipe you're cooking now
+  let recipes = $derived(big && prepStyle === 'single' && allRecipes.length > 1 ? allRecipes.filter((r) => r.id === (focusId || allRecipes[0].id)) : allRecipes);
   const batches = (r) => { const p = por[r.id]; return p ? Math.max(0.5, Math.ceil(p.scale * 2) / 2) : 1; };
   const times = (k) => (k === 1 ? 'one batch' : k === 0.5 ? 'half a batch' : `${k}× the recipe`);
   let kOf = $derived(Object.fromEntries(recipes.map((r) => [r.id, batches(r)])));
@@ -128,6 +140,8 @@
         });
         out.push({ kind: 'recipe', title: r.title, mins: sc.reduce((a, x) => a + x.mins, 0), approx: true, note: sc.map((x) => x.note).filter(Boolean).join(' · '), subs: [{ r, js: r.steps.map((_, j) => j) }] });
       });
+    const fz = recipes.filter((r) => freezeSel[r.id] && canFreeze(r));
+    if (fz.length) out.push({ kind: 'freezer', title: 'Pack freezer meals', mins: 10 + 5 * fz.reduce((a, r) => a + freezerPlan(r, por[r.id]?.portions || r.servings, Number(app.plan.household) || 4).packs, 0), approx: true });
     out.push({ kind: 'pack', title: app.settings.audience === 'group' ? 'Hold & serve' : 'Pack it up', mins: 15, approx: true });
     out.forEach((st) => (st.label = `${fmtMins(st.mins, st.approx)}${st.mins ? ' · ' : ''}${st.title}`));
     return out;
@@ -143,6 +157,7 @@
     if (st.kind === 'spices') return spiceKeys();
     if (st.kind === 'time') return [st.key, ...(st.knife ? knifeKeys() : []), ...(st.spices ? spiceKeys() : []), ...subKeys(st)];
     if (st.kind === 'recipe') return subKeys(st);
+    if (st.kind === 'freezer') return recipes.filter((r) => freezeSel[r.id] && canFreeze(r)).map((r) => `fz|${r.id}`);
     return [];
   }
   const stepDone = (st) => { const k = stepKeys(st); return k.length > 0 && k.every((x) => done[x]); };
@@ -167,9 +182,8 @@
   }
   const shortTitle = (t) => String(t).split(/,|\s[–—-]\s/)[0];
 
-  const big = $derived(app.settings.audience === 'group' || !!cart);
   let mode = $state(localStorage.getItem('mp-prep-mode') || (untrack(() => app.settings.audience) === 'group' ? 'steps' : 'simple'));
-  $effect(() => { if (big && mode === 'simple') mode = 'steps'; if (!big && mode === 'overview') mode = 'simple'; });
+  $effect(() => { if (big && mode === 'simple') mode = 'steps'; if (!big && mode === 'overview') mode = 'simple'; if (!big && prepStyle === 'single' && mode === 'steps') mode = 'simple'; if (!big && prepStyle === 'full' && mode === 'simple') mode = 'steps'; });
   // big group: work backwards from serving time
   let serveAt = $state(untrack(() => ctx.serveAt) || '18:00');
   $effect(() => { serveAt = ctx.serveAt || '18:00'; });
@@ -250,7 +264,7 @@
 {#snippet recipeBlock(r)}
   {@const k = kOf[r.id] || 1}
   <div class="card">
-    <h3>{r.title} <span class="pill" class:acc={k !== 1}>{times(k)}</span></h3>
+    <div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap"><Dish {r} size={64} /><h3 style="margin:0">{r.title} <span class="pill" class:acc={k !== 1}>{times(k)}</span></h3></div>
     {#if k !== 1}<p class="small muted" style="margin:0 0 6px">Amounts below are already {k === 0.5 ? 'halved' : `multiplied by ${k}`}.</p>{/if}
     {#if r.ing.length}
       <p class="small muted" style="margin:6px 0 2px">Ingredients</p>
@@ -315,21 +329,39 @@
   <h1>{!big && mode === 'simple' ? "What's for dinner" : 'Cook day'}</h1>
   <p class="sentence small" style="margin:0 0 8px">Cooking from
     <select class="inl" value={cart ? cart.id : 'home'} onchange={(e) => openCart(e.currentTarget.value)}>
-      <option value="home">🏠 This week's home list</option>
+      <option value="home">🏠 {currentHousehold()?.name || 'Home'} list</option>
       {#each app.carts as c (c.id)}<option value={c.id}>📋 {c.name}{c.people ? ` (${c.people})` : ''}</option>{/each}
     </select>
     {#if cart}<span class="muted"> — cooked once for {cart.people || '?'} people</span>{/if}
   </p>
+  {#if allRecipes.length}
+    <div class="seg" style="margin:0 0 8px">
+      <button class:on={prepStyle === 'single'} onclick={() => setStyle('single')}>🍽 One meal at a time</button>
+      <button class:on={prepStyle === 'full'} onclick={() => setStyle('full')}>🥘 Full meal prep</button>
+    </div>
+    {#if big && prepStyle === 'single' && allRecipes.length > 1}
+      <p class="sentence small" style="margin:0 0 8px">Cooking now: <select class="inl" value={recipes[0]?.id} onchange={(e) => { focusId = e.currentTarget.value; at = 0; }}>{#each allRecipes as r}<option value={r.id}>{r.title}</option>{/each}</select></p>
+    {/if}
+    {#if prepStyle === 'full' || big}
+      <details class="small" style="margin:0 0 8px" open={Object.values(freezeSel).some(Boolean)}>
+        <summary>🧊 Make freezer meals {Object.values(freezeSel).filter(Boolean).length ? `(${Object.values(freezeSel).filter(Boolean).length})` : ''}</summary>
+        <p class="muted" style="margin:6px 0 4px">Pick what to pack for the freezer — you'll get a step for cooling, portioning, labeling and reheating.</p>
+        <div class="row" style="gap:4px">{#each allRecipes as r}
+          {#if canFreeze(r)}<button class="chip" class:on={freezeSel[r.id]} onclick={() => toggleFreeze(r.id)}>{freezeSel[r.id] ? '🧊 ' : ''}{shortTitle(r.title)}</button>
+          {:else}<span class="chip" style="opacity:.5" title="Doesn't freeze well">{shortTitle(r.title)} · fridge only</span>{/if}
+        {/each}</div>
+      </details>
+    {/if}
+  {/if}
   {#if !recipes.length}
     <p class="muted">{cart ? 'This list has no recipes yet — add some from the 🛒 cart.' : 'No recipes picked for this week yet.'}</p>
     {#if !cart}<button onclick={() => go('plan')}>Plan the week</button>{/if}
   {:else}
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <div class="seg">
-        {#if !big}<button class:on={mode === 'simple'} onclick={() => (mode = 'simple')}>Tonight</button>{/if}
+      {#if big}<div class="seg">
         <button class:on={mode === 'steps'} onclick={resume}>Step by step</button>
-        {#if big}<button class:on={mode === 'overview'} onclick={() => (mode = 'overview')}>Overview</button>{/if}
-      </div>
+        <button class:on={mode === 'overview'} onclick={() => (mode = 'overview')}>Overview</button>
+      </div>{:else}<span></span>{/if}
       {#if big && ready && !editSetup}<button class="quiet small" onclick={() => (editSetup = true)}>⚙ Kitchen & serving time</button>{/if}
       <label class="row small" style="gap:6px;cursor:pointer" title="Stops the screen from dimming while you cook">
         <span class="switch"><input type="checkbox" bind:checked={awake} /><span></span></span> Keep screen on
@@ -377,7 +409,7 @@
     {/if}
     {#if err}<div class="err">⚠️ {err}</div>{/if}
     {#if mode === 'simple'}
-      <Tonight onsteps={resume} />
+      <Tonight onsteps={() => { setStyle('full'); resume(); }} />
       <details><summary class="small" style="margin:8px 0">All of this week's recipes ({recipes.length})</summary>
         {#each recipes as r}{@render recipeBlock(r)}{/each}
       </details>
@@ -431,6 +463,19 @@
         {#each cur.subs as e}{@render subBlock(e)}{/each}
       {:else if cur.kind === 'recipe'}
         {#each cur.subs as e}{@render subBlock(e)}{/each}
+      {:else if cur.kind === 'freezer'}
+        {@const per = Number(app.plan.household) || 4}
+        {@const fz = recipes.filter((r) => freezeSel[r.id] && canFreeze(r)).map((r) => ({ r, f: freezerPlan(r, por[r.id]?.portions || r.servings, per) }))}
+        {@const needs = Object.entries(fz.reduce((a, x) => { if (x.f.need) a[x.f.need] = (a[x.f.need] || 0) + x.f.packs; return a; }, {}))}
+        <div class="card">
+          <p class="small" style="margin-top:0">🧊 Cool everything first: spread it out in shallow pans and get it into the fridge within 2 hours, then pack. Freezer meals keep best for about 3 months.</p>
+          {#if needs.length}<p class="small"><b>You'll need:</b> {needs.map(([n, c]) => `${c} ${n}${c === 1 ? '' : 's'}`).join(', ')}, a marker or labels.</p>{/if}
+          {#each fz as { r, f }}
+            <div class="fz">
+              {@render box(`fz|${r.id}`, `<b>${esc(r.title)}</b> → <b>${f.packs} pack${f.packs === 1 ? '' : 's'}</b> of ${f.perPack} servings<br><span class="small">${esc(f.pack)}</span><br><span class="small muted">🏷 Label: ${esc(f.label)}</span>`)}
+            </div>
+          {/each}
+        </div>
       {:else if cur.kind === 'pack' && big}
         <div class="card">
           <h3 style="margin-top:0">🔥 Holding until you serve</h3>

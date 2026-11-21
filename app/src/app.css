@@ -177,3 +177,14 @@ select.inl { padding-right: 2px; }
 .fab-badge { background: #fff !important; color: var(--accent) !important; border: 2px solid var(--accent); font-weight: 800; }
 .cart-fab { display: grid; place-items: center; width: 62px; height: 62px; box-shadow: 0 6px 20px rgba(31,95,209,.45), 0 2px 6px rgba(0,0,0,.2); }
 .cart-fab svg { filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+.warn { color: #a0291f; font-weight: 600; }
+.week { display: flex; flex-direction: column; gap: 8px; }
+.wday { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: start; }
+.wday-name { font-weight: 800; color: var(--accent); padding-top: 10px; }
+.wslots { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.wslot { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-weight: 400; min-height: 64px; justify-content: flex-start; }
+.wslot:hover { border-color: var(--accent); }
+.wslot.empty { border-style: dashed; background: transparent; }
+.wmeal { text-transform: capitalize; font-size: 11px; letter-spacing: .02em; }
+.wname { font-weight: 650; font-size: 14px; line-height: 1.2; }
+.plan-sheet { bottom: auto; top: 50%; right: 50%; transform: translate(50%, -50%); }

@@ -2,12 +2,14 @@
   import { untrack } from 'svelte';
   import { app, saveSettings, importRecipes, importRecipeUrl, callProxy, toast } from '../lib/db.svelte.js';
   import { CUISINES, MEAL_TYPES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
+  import { conflicts, prefsOf } from '../lib/diet.js';
+  const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${[...c.allergens.map((a) => 'contains ' + a.toLowerCase()), ...c.diets, ...c.avoid.map((a) => 'has ' + a)].join(', ')}` : ''; };
   // onadd(recipe) — called for each recipe added (e.g. to drop it into a week); onbm — open the Bare Minimum weeks
   let { onadd = null, onbm = null, onclose = null } = $props();
 
   // tap = pick (tap again to unpick); press and hold = ♥ favorite (saved, and suggestions lean toward it)
   let fav = $state({ cuisines: [...(app.settings.cuisines || [])], types: [...(app.settings.mealTypes || [])] });
-  let pick = $state({ cuisines: untrack(() => [...fav.cuisines]), types: [] });
+  let pick = $state({ cuisines: untrack(() => [...fav.cuisines]), types: untrack(() => (app.settings.diets || []).includes('Vegan') ? ['Vegan'] : (app.settings.diets || []).includes('Vegetarian') ? ['Vegetarian'] : []) });
   let q = $state(''), link = $state('');
   let ideas = $state([]), sites = $state([]), busy = $state(''), err = $state(''), added = $state({});
 
@@ -41,13 +43,13 @@
 
   async function addIdea(i) {
     busy = i.id; err = '';
-    try { const m = await mealDetail(i.id); const [r] = await importRecipes([fromMealDb(m)], 'mdb'); added[i.id] = true; toast(`✓ ${r.title} saved`); onadd?.(r); }
+    try { const m = await mealDetail(i.id); const [r] = await importRecipes([fromMealDb(m)], 'mdb'); added[i.id] = true; toast(`✓ ${r.title} saved${warnFor(r)}`); onadd?.(r); }
     catch (e) { err = e.message; }
     busy = '';
   }
   async function addLink(url) {
     busy = url; err = '';
-    try { const [r] = await importRecipeUrl(url); added[url] = true; link = ''; toast(`✓ ${r.title} saved`); onadd?.(r); }
+    try { const [r] = await importRecipeUrl(url); added[url] = true; link = ''; toast(`✓ ${r.title} saved${warnFor(r)}`); onadd?.(r); }
     catch (e) { err = e.message; }
     busy = '';
   }

@@ -34,9 +34,10 @@ export async function planTrip() {
     const start = startAddress(), home = s.homeAddress;
     const nm = await nearestAndMatrix(start, home, stores, s.nearestStores !== false, (t) => (trip.step = t));
     trip.geo = nm.start; trip.stores = nm.stores;
-    // stores more than ~35 miles from the start are from an old address — leave them out
-    const near = nm.stores.filter((st) => !st.lat || !nm.start || haversineMi(nm.start, st) <= 35);
-    if (!near.length) throw new Error('None of your stores are near this address. Open More → Stores → “Find stores near me”.');
+    // stores beyond your store range (Settings, 25 mi by default) are left out
+    const range = Number(s.storeRadius) || 25;
+    const near = nm.stores.filter((st) => !st.lat || !nm.start || haversineMi(nm.start, st) <= range);
+    if (!near.length) throw new Error(`None of your stores are within ${range} miles. Open More → Stores → “Find stores near me”, or widen the store range in Settings.`);
     if (near.length < nm.stores.length) {
       const keep = new Set(['start', 'end', ...near.map((x) => x.id)]), idx = nm.matrix.nodes.map((id, i) => (keep.has(id) ? i : -1)).filter((i) => i >= 0);
       nm.matrix = { nodes: idx.map((i) => nm.matrix.nodes[i]), dist: idx.map((i) => idx.map((j) => nm.matrix.dist[i][j])), dur: idx.map((i) => idx.map((j) => nm.matrix.dur[i][j])) };

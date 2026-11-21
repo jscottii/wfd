@@ -1,4 +1,8 @@
 <script>
+  import Dish from '../components/Dish.svelte';
+  import { conflicts, prefsOf } from '../lib/diet.js';
+  const prefs = $derived(prefsOf(app.settings));
+  const warnText = (r) => { const c = conflicts(r, prefs); return [...c.allergens.map((a) => `contains ${a.toLowerCase()}`), ...c.diets, ...c.avoid.map((a) => `has ${a}`)].join(' · '); };
   import { app, portions, itemById, setRecipeActive, saveRecipe, deleteRecipe, importRecipeUrl, toast } from '../lib/db.svelte.js';
   import FindRecipes from '../components/FindRecipes.svelte';
   import Onboarding from '../components/Onboarding.svelte';
@@ -80,8 +84,10 @@
     <div class="card">
       {#each list as r}
         <div class="list-row">
-          <button class="quiet grow" style="text-align:left;justify-content:flex-start;color:var(--ink);padding:0" onclick={() => (open = open === r.id ? null : r.id)}>
-            <span><b>{r.title}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''} · makes {r.servings || '?'}{r.calories ? ` · ${r.calories} cal` : ''}{por[r.id] ? ` · this week ${por[r.id].portions} portions (${por[r.id].scale}×)` : ''}</span></span>
+          <button class="quiet grow" style="text-align:left;justify-content:flex-start;color:var(--ink);padding:0;display:flex;gap:10px;align-items:center" onclick={() => (open = open === r.id ? null : r.id)}>
+            <Dish {r} size={52} />
+            <span class="grow"><b>{r.title}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''} · makes {r.servings || '?'}{r.calories ? ` · ${r.calories} cal` : ''}{por[r.id] ? ` · this week ${por[r.id].portions} portions (${por[r.id].scale}×)` : ''}</span>
+              {#if conflicts(r, prefs).any}<br><span class="warn small">⚠️ {warnText(r)}</span>{/if}</span>
           </button>
           <label class="switch" title="Shop for this recipe"><input type="checkbox" checked={r.active} onchange={(e) => setRecipeActive(r.id, e.currentTarget.checked).catch((er) => toast(er.message))} /><span></span></label>
         </div>

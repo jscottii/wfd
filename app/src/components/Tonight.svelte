@@ -1,4 +1,5 @@
 <script>
+  import Dish from './Dish.svelte';
   import { app, patchPlan, toast } from '../lib/db.svelte.js';
   import { scaleLine } from '../lib/cookday.js';
   // Household mode: just tonight. What's for dinner, for how many, and whether to cook it or just reheat it.
@@ -60,6 +61,7 @@
     <span class="row" style="gap:2px"><button class="quiet" disabled={offset === 0} onclick={() => { offset--; open = false; swapping = false; }} aria-label="Previous day">‹</button><button class="quiet" disabled={offset >= 6} onclick={() => { offset++; open = false; swapping = false; }} aria-label="Next day">›</button></span>
   </div>
   {#if recipe}
+    {#if recipe.image}<img class="hero" src={recipe.image} alt={recipe.title} />{/if}
     <h2 style="margin:2px 0 4px">{recipe.title}</h2>
     <p class="small muted" style="margin:0 0 10px">For {day.people} · {reheat ? 'already made — just reheat' : k === 1 ? 'cook one batch' : `cook ${k}× the recipe`}{recipe.fridge ? ` · keeps ${recipe.fridge} in the fridge` : ''}</p>
     {#if reheat}
@@ -94,5 +96,6 @@
 
 <style>
   .tonight { border-color: var(--accent); }
+  .hero { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; margin: 6px 0 8px; display: block; }
   .tonight h2 { font: 700 24px/1.2 Georgia, serif; }
 </style>

@@ -40,8 +40,8 @@ const splitSteps = (t) => {
   return out;
 };
 
-function toParsed({ title, servings, yieldText, cuisine, when, ing, steps, url, shopping, calories }) {
-  return { shopping, recipes: [{ title, servings: servings || 4, yieldText: yieldText || `${servings || 4} servings`, when, fridge: '', freeze: '', ing, steps, tip: '', url, cuisine, calories }] };
+function toParsed({ title, servings, yieldText, cuisine, when, ing, steps, url, shopping, calories, image }) {
+  return { shopping, recipes: [{ title, servings: servings || 4, yieldText: yieldText || `${servings || 4} servings`, when, fridge: '', freeze: '', ing, steps, tip: '', url, cuisine, calories, image }] };
 }
 
 /** TheMealDB meal → the shape buildImport takes. */
@@ -54,7 +54,7 @@ export function fromMealDb(m) {
     if (!STAPLE.test(name)) shopping.push({ line: shopLine(`${/^\d/.test(meas) ? meas + ' ' : ''}${name}`), section: sectionOf(name) });
   }
   return toParsed({ title: m.strMeal, servings: 4, cuisine: m.strArea, when: mealOf(m.strCategory), ing, steps: splitSteps(m.strInstructions),
-    url: m.strSource || `https://www.themealdb.com/meal/${m.idMeal}`, shopping });
+    url: m.strSource || `https://www.themealdb.com/meal/${m.idMeal}`, shopping, image: m.strMealThumb || '' });
 }
 
 /** schema.org Recipe (from a recipe page) → the shape buildImport takes. */
@@ -67,7 +67,8 @@ export function fromJsonLd(r, url) {
   const cat = [].concat(r.recipeCategory || []).join(' ');
   const shopping = ing.map(shopLine).filter((l) => l && !STAPLE.test(l.replace(/^[\d\s½¼¾⅓⅔./-]+/, '').trim())).map((line) => ({ line, section: sectionOf(line) }));
   return toParsed({ title: String(r.name || 'Recipe').replace(/&amp;/g, '&'), servings, yieldText: String(y || ''), cuisine: [].concat(r.recipeCuisine || [])[0] || '',
-    when: mealOf(cat), ing, steps, url, shopping, calories: Math.round(Number(String(r.nutrition?.calories || '').match(/[\d.]+/)?.[0])) || null });
+    when: mealOf(cat), ing, steps, url, shopping, calories: Math.round(Number(String(r.nutrition?.calories || '').match(/[\d.]+/)?.[0])) || null,
+    image: (() => { const im = Array.isArray(r.image) ? r.image[0] : r.image; return typeof im === 'string' ? im : im?.url || ''; })() });
 }
 
 const get = (path) => fetch(MEALDB + path).then((r) => { if (!r.ok) throw new Error('The recipe finder is busy — try again in a moment.'); return r.json(); });

@@ -3,6 +3,7 @@
   import { app, saveSettings, saveSerpKey, testSerpKey, saveInstacartKey, MAX_HOUSEHOLDS, switchHousehold, createHousehold, acceptInvite, declineInvite, leaveHousehold, renameHousehold, currentHousehold, getJoinCode, resetJoinCode, peekCode, joinWithCode, showCode, inviteLink, invite, signOut, deleteAccount, saveStore, addLocalStores, setHouseholdSize, toast } from '../lib/db.svelte.js';
   import { findLocalChains } from '../lib/maps.js';
   import { ui } from '../lib/ui.svelte.js';
+  import MealPrefs from '../components/MealPrefs.svelte';
   import { instacartStores } from '../lib/order.js';
   import { STRIPE_PAYMENT_LINK, STRIPE_PORTAL_LINK, PLUS_PRICE } from '../lib/config.js';
   import { isNative } from '../lib/native.js';
@@ -45,7 +46,7 @@
   let local = $state(null), localPick = $state({}), localBusy = $state(''), localErr = $state('');
   async function findLocal() {
     localBusy = 'find'; localErr = '';
-    try { local = await findLocalChains(app.settings.homeAddress, app.stores); localPick = Object.fromEntries(local.filter((b) => !b.known).slice(0, 5).map((b) => [b.brand, true])); if (!local.length) localErr = 'No grocery stores found within 10 miles of your home address.'; }
+    try { local = await findLocalChains(app.settings.homeAddress, app.stores, Number(app.settings.storeRadius) || 25); localPick = Object.fromEntries(local.filter((b) => !b.known).slice(0, 5).map((b) => [b.brand, true])); if (!local.length) localErr = `No grocery stores found within ${app.settings.storeRadius || 25} miles of your home address.`; }
     catch (e) { localErr = e.message; }
     localBusy = '';
   }
@@ -59,7 +60,7 @@
     const moved = s.homeAddress !== app.settings.homeAddress;
     saving = true;
     try { await saveSettings({ homeAddress: s.homeAddress, mpg: +s.mpg, gasPrice: +s.gasPrice, timeValue: +s.timeValue, timeValueSet: !!s.timeValueSet, stopMinutes: +s.stopMinutes, maxStores: +s.maxStores,
-      costcoMember: !!s.costcoMember, costcoMode: s.costcoMode, householdSize: +s.householdSize, audience: s.audience || 'household', units: s.units || 'imperial', nearestStores: !!s.nearestStores, serpMonthlyLimit: +s.serpMonthlyLimit });
+      costcoMember: !!s.costcoMember, costcoMode: s.costcoMode, householdSize: +s.householdSize, audience: s.audience || 'household', units: s.units || 'imperial', storeRadius: +s.storeRadius || 25, nearestStores: !!s.nearestStores, serpMonthlyLimit: +s.serpMonthlyLimit });
       await setHouseholdSize(+s.householdSize);
       trip.result = null; toast('✓ Settings saved — plan, recipe amounts and shopping list updated');
       if (moved) { tab = 'stores'; findLocal(); } }
@@ -117,7 +118,7 @@
           </label>
         {/each}
         <button onclick={addLocal} disabled={!!localBusy || !local.some((b) => localPick[b.brand] && !b.known)}>{#if localBusy === 'add'}<span class="spinner"></span>{/if} Add selected stores</button>
-        <p class="small muted">New stores start with estimated prices (from what items cost elsewhere and the chain's usual price level). Scanning a receipt or a live price check replaces the estimates. Stores more than 35 miles from where a trip starts are left out automatically.</p>
+        <p class="small muted">New stores start with estimated prices (from what items cost elsewhere and the chain's usual price level). Scanning a receipt or a live price check replaces the estimates. Stores farther than your store range (Settings) from where a trip starts are left out.</p>
       {/if}
     </div>
     <div class="card">
@@ -139,6 +140,7 @@
       <label class="f">Who you cook for<select bind:value={s.audience} onchange={() => { saveSettings({ audience: s.audience }); toast(s.audience === "group" ? "✓ Big-group mode: more detail everywhere" : "✓ Household mode: simpler screens"); }}><option value="household">My household — keep it simple</option><option value="group">A big group (10+) — show me the details</option></select></label>
       <label class="f">Show pantry amounts in<select bind:value={s.units}><option value="imperial">Imperial — lb, oz, cups</option><option value="metric">Metric — kg, g, L</option><option value="relative">Roughly — plenty, some, low, out</option></select></label>
       <label class="f">Home address (trips end here)<input bind:value={s.homeAddress} /></label>
+      <label class="f">Store range: shop at stores within <b>{s.storeRadius || 25} miles</b><input type="range" min="5" max="50" step="5" bind:value={s.storeRadius} /></label>
       <div class="grid2">
         <label class="f">Usually feeding (people)<input type="number" min="1" bind:value={s.householdSize} /></label>
         <label class="f">Costco<select bind:value={s.costcoMember}><option value={false}>Not a member</option><option value={true}>Member</option></select></label>
@@ -155,6 +157,11 @@
       </div>
       </details>
       <button onclick={save} disabled={saving}>{#if saving}<span class="spinner"></span>{/if} Save settings</button>
+    </div>
+
+    <div class="card">
+      <h3>Meal preferences</h3>
+      <MealPrefs />
     </div>
 
     <div class="card">
