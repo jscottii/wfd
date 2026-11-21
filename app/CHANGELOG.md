@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.2.1 — Nov 21, 2026
+- Leftovers land on a random later meal 1–3 days after cooking (not always the next day's lunch).
+
 ## 1.2.0 — Nov 21, 2026
 - Pick for me: choose cuisines for the week (starts from your favorites); finds and saves new recipes when saved ones run short.
 - Every recipe is eaten at most twice: cooked once, leftovers once at the next meal (tonight's dinner → tomorrow's lunch).

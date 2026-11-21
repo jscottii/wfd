@@ -66,17 +66,32 @@ export function recipesNeeded(shape) {
  * once more at the next meal (tonight's dinner → tomorrow's lunch). Extra recipes mean fewer leftover meals.
  */
 export function placeRecipes(grid, byKind, meals, snack) {
+  // Leftovers land on a random later meal 1–3 days after cooking (never before, never the same day, and rarely
+  // the very next meal), so the week doesn't read "dinner → tomorrow's lunch" every time.
   const fill = ({ slots, pairs }, list) => {
     if (!slots.length || !list.length) return;
-    let use = Math.max(0, Math.min(pairs.length, slots.length - list.length));   // leftover meals we need
-    const pairAt = new Set(pairs.slice(0, use));
+    const dayOf = (i) => grid.indexOf(slots[i][0]);
+    let doubles = Math.max(0, Math.min(pairs.length, slots.length - list.length));
+    const taken = new Array(slots.length).fill(false);
     let j = 0;
     for (let i = 0; i < slots.length; i++) {
-      const [d, m] = slots[i];
-      if (d[m]) continue;
+      if (taken[i]) continue;
       const r = list[j++ % list.length];
-      d[m] = r.id;
-      if (pairAt.has(i) && slots[i + 1]) { const [d2, m2] = slots[i + 1]; d2[m2] = r.id; }
+      const [d, m] = slots[i]; d[m] = r.id; taken[i] = true;
+      if (doubles > 0) {
+        const di = dayOf(i);
+        const options = slots.map((_, k) => k).filter((k) => !taken[k] && dayOf(k) > di && dayOf(k) <= di + 3);
+        // keep enough room: don't take a slot a later cook day needs if this one has other options
+        const notNext = options.filter((k) => k !== i + 1);
+        const pool = notNext.length ? notNext : options;
+        if (pool.length) {
+          // lean toward sooner days (fresher leftovers) but stay random
+          const weights = pool.map((k) => 1 / (dayOf(k) - di));
+          let x = Math.random() * weights.reduce((a, b) => a + b, 0), pick = pool[0];
+          for (let t = 0; t < pool.length; t++) { x -= weights[t]; if (x <= 0) { pick = pool[t]; break; } }
+          const [d2, m2] = slots[pick]; d2[m2] = r.id; taken[pick] = true; doubles--;
+        }
+      }
     }
   };
   grid.forEach((d) => { ['breakfast', 'lunch', 'dinner', 'snack'].forEach((m) => (d[m] = '')); });
