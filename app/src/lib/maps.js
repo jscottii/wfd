@@ -187,3 +187,20 @@ export function directionsUrl(start, end, stores) {
     (stores.length ? `&waypoints=${stores.map((x) => enc(x)).join('%7C')}` : '');
 }
 export { UA_EMAIL };
+
+/** The phone's location → a street address (asks the person's permission first). */
+export function hereAddress() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('This device can’t share its location — type your address instead.'));
+    navigator.geolocation.getCurrentPosition(async (p) => {
+      const { latitude: lat, longitude: lng } = p.coords;
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+        const a = (await r.json()).address || {};
+        const street = [a.house_number, a.road].filter(Boolean).join(' ');
+        const city = a.city || a.town || a.village || a.suburb || '';
+        resolve([street, city, [a.state, a.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || `${lat.toFixed(5)},${lng.toFixed(5)}`);
+      } catch { resolve(`${lat.toFixed(5)},${lng.toFixed(5)}`); }
+    }, () => reject(new Error('Location wasn’t allowed — type your address instead.')), { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  });
+}

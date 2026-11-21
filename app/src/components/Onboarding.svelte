@@ -1,9 +1,11 @@
 <script>
-  import { app, saveSettings, importRecipes } from '../lib/db.svelte.js';
+  import { app, saveSettings, importRecipes, addLocalStores } from '../lib/db.svelte.js';
+  import { hereAddress, findLocalChains, geocode } from '../lib/maps.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
   // First run (or anyone who hasn't done it): pick favorite cuisines → 15 starter meals in Saved recipes.
   let { go, onclose } = $props();
-  let step = $state('pick'), liked = $state([...(app.settings.cuisines || [])]), prog = $state(0), err = $state(''), made = $state([]);
+  // where home is comes first (trips start and end there, and it decides which stores are nearby)
+  let step = $state(!app.settings.homeSet ? 'home' : 'pick'), liked = $state([...(app.settings.cuisines || [])]), prog = $state(0), err = $state(''), made = $state([]);
   const TOTAL = 15;
   const toggle = (c) => (liked = liked.includes(c) ? liked.filter((x) => x !== c) : [...liked, c]);
 
@@ -34,12 +36,42 @@
       step = 'done';
     } catch (e) { err = e.message; step = 'pick'; }
   }
+  let addr = $state(app.settings.homeSet ? app.settings.homeAddress : ''), homeBusy = $state(''), homeNote = $state('');
+  async function useHere() { homeBusy = 'here'; err = ''; try { addr = await hereAddress(); } catch (e) { err = e.message; } homeBusy = ''; }
+  async function saveHome() {
+    homeBusy = 'save'; err = '';
+    try {
+      await geocode(addr);   // make sure we can find it on the map
+      await saveSettings({ homeAddress: addr.trim(), homeSet: true });
+      // the grocery chains around you become your stores
+      try {
+        const near = (await findLocalChains(addr, app.stores)).filter((b) => !b.known && b.miles <= 10).slice(0, 5);
+        if (near.length) { await addLocalStores(near); homeNote = `Added ${near.map((b) => b.brand).join(', ')} near you.`; }
+      } catch { /* the store map can be busy; stores can be added later in More → Stores */ }
+      if (app.settings.onboarded) { homeBusy = ''; step = 'homedone'; } else { homeBusy = ''; step = 'pick'; }
+    } catch (e) { err = 'We couldn’t find that address — try adding the city and ZIP.'; homeBusy = ''; }
+  }
+  $effect(() => { if (step === 'close') onclose(); });
   async function skip() { await saveSettings({ onboarded: true, onboardSkipped: true }).catch(() => {}); onclose(); }
 </script>
 
 <div class="modal-back" role="presentation">
   <div class="modal card nocollapse onboard">
-    {#if step === 'pick'}
+    {#if step === 'home'}
+      <h2 style="margin-top:0">Where's home?</h2>
+      <p class="small muted" style="margin-top:0">Shopping trips start and end here, and we'll find the grocery stores near you. Only your household sees it.</p>
+      {#if err}<div class="err small">⚠️ {err}</div>{/if}
+      <button class="ghost" onclick={useHere} disabled={!!homeBusy}>{#if homeBusy === 'here'}<span class="spinner"></span>{/if} 📍 Use my current location</button>
+      <input style="margin-top:8px" bind:value={addr} placeholder="Street, city, ZIP" autocomplete="street-address" />
+      <div class="row" style="margin-top:12px">
+        <button onclick={saveHome} disabled={!addr.trim() || !!homeBusy}>{#if homeBusy === 'save'}<span class="spinner"></span> Finding stores near you…{:else}Save home{/if}</button>
+        <button class="quiet" onclick={() => (step = app.settings.onboarded ? 'close' : 'pick')}>Later</button>
+      </div>
+    {:else if step === 'homedone'}
+      <h2 style="margin-top:0">✓ Home saved</h2>
+      <p class="small">{homeNote || 'You can add stores near you any time in More → Stores.'}</p>
+      <button onclick={onclose}>Done</button>
+    {:else if step === 'pick'}
       <h2 style="margin-top:0">What do you love to eat?</h2>
       <p class="small muted" style="margin-top:0">Pick your favorite cuisines and we'll start you off with {TOTAL} meals to plan from. You can change them any time.</p>
       {#if err}<div class="err small">⚠️ {err}</div>{/if}

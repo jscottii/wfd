@@ -518,3 +518,12 @@ revoke insert, update, delete, truncate on entitlements from authenticated, anon
 
 -- 2026-11-20d
 alter table carts add column if not exists meta jsonb not null default '{}'::jsonb;
+
+-- 2026-11-21: the app server (service_role) must be able to use every table; users stay limited by row security
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant execute on functions to service_role;

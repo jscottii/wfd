@@ -127,10 +127,8 @@ async function boot() {
     app.error = '';
     // opened an invite link: a brand-new account joins that household instead of starting its own
     const code = pendingCode();
-    if (code) {
-      const { data: mine } = await sb.rpc('list_households');
-      if (!mine?.length) { const { error: je } = await sb.rpc('join_with_code', { code }); clearPendingCode(); if (je) app.error = je.message; }
-    }
+    // an invite link always adds you to that household and switches to it (even if you already have one)
+    if (code) { const { error: je } = await sb.rpc('join_with_code', { code }); clearPendingCode(); if (je) app.error = je.message; }
     const { data, error } = await sb.rpc('ensure_household');
     if (error) fail(error);
     app.household = data.household_id;
@@ -405,6 +403,7 @@ export async function callProxy(body) {
   if (error) {
     let msg = error.message;
     try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+    if (/no household/i.test(msg)) msg = 'You’re not in a household yet, so nothing can be saved. Create one, or join one with an invite link or home code.';
     throw new Error(msg);
   }
   if (data?.error) throw new Error(data.error);
