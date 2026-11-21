@@ -15,4 +15,4 @@ export const STRIPE_PORTAL_LINK = '';
 export const PLUS_PRICE = '$2.99/month';
 
 // Amazon Associates tag (e.g. wfd-20). Only with one does the Amazon button fill the cart directly; otherwise it copies the list and opens Amazon Fresh.
-export const AMAZON_ASSOCIATE_TAG = '';
+export const AMAZON_ASSOCIATE_TAG = 'wfdwhatsfordi-20';

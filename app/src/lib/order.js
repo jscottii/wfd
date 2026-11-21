@@ -39,11 +39,11 @@ export function orderAmazon(lines) {
   if (!AMAZON_ASSOCIATE_TAG) return 'copy';
   const ingredients = lines.map((l) => ({ name: l.search, quantityList: [{ unit: 'COUNT', amount: l.count }] }));
   const f = document.createElement('form');
-  f.method = 'POST'; f.action = 'https://www.amazon.com/afx/ingredients/landing'; f.target = '_blank';
+  f.method = 'POST'; f.action = `https://www.amazon.com/afx/ingredients/landing?tag=${encodeURIComponent(AMAZON_ASSOCIATE_TAG)}`; f.target = '_blank';
   const i = document.createElement('input');
   i.type = 'hidden'; i.name = 'ingredients'; i.value = JSON.stringify({ ingredients });
-  const t = document.createElement('input'); t.type = 'hidden'; t.name = 'tag'; t.value = AMAZON_ASSOCIATE_TAG;
-  f.appendChild(i); f.appendChild(t); document.body.appendChild(f); f.submit(); f.remove();
+  f.appendChild(i);
+  for (const n of ['tag', 'associateTag']) { const t = document.createElement('input'); t.type = 'hidden'; t.name = n; t.value = AMAZON_ASSOCIATE_TAG; f.appendChild(t); } document.body.appendChild(f); f.submit(); f.remove();
 }
 
 /** Walmart: look up each item's product number, then open Walmart with them already in the cart (sign in there to check out). */
