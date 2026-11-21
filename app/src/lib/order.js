@@ -1,3 +1,4 @@
+import { AMAZON_ASSOCIATE_TAG } from './config.js';
 // Send a week's shopping list to a delivery service.
 import { app, itemById, callProxy } from './db.svelte.js';
 import { shareText, isNative } from './native.js';
@@ -34,12 +35,15 @@ export async function orderInstacart(title, lines) {
 
 /** Amazon Fresh / Whole Foods: Amazon's ingredient hand-off page, where you pick products and add them to the cart. */
 export function orderAmazon(lines) {
+  // Amazon only accepts recipe-to-cart from approved Associates; without a tag, use the Fresh store + copied list
+  if (!AMAZON_ASSOCIATE_TAG) return 'copy';
   const ingredients = lines.map((l) => ({ name: l.search, quantityList: [{ unit: 'COUNT', amount: l.count }] }));
   const f = document.createElement('form');
   f.method = 'POST'; f.action = 'https://www.amazon.com/afx/ingredients/landing'; f.target = '_blank';
   const i = document.createElement('input');
   i.type = 'hidden'; i.name = 'ingredients'; i.value = JSON.stringify({ ingredients });
-  f.appendChild(i); document.body.appendChild(f); f.submit(); f.remove();
+  const t = document.createElement('input'); t.type = 'hidden'; t.name = 'tag'; t.value = AMAZON_ASSOCIATE_TAG;
+  f.appendChild(i); f.appendChild(t); document.body.appendChild(f); f.submit(); f.remove();
 }
 
 /** Walmart: look up each item's product number, then open Walmart with them already in the cart (sign in there to check out). */
@@ -56,6 +60,7 @@ export async function copyAndOpen(title, lines, url) {
   open(url);
 }
 export const STORES_LINKS = {
+  amazon: 'https://www.amazon.com/alm/storefront?almBrandId=QW1hem9uIEZyZXNo',
   walmart: 'https://www.walmart.com/cp/grocery/976759',
   safeway: 'https://www.safeway.com/shop/aisles.html'
 };
