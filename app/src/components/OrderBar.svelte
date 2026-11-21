@@ -8,7 +8,7 @@
     try {
       if (how === 'instacart') { const r = await orderInstacart(title, lines); if (r.test) toast('Opened Instacart’s test site — use a live key for real orders'); }
       else if (how === 'amazon') orderAmazon(lines);
-      else if (how === 'walmart' && app.hasSerpKey) {
+      else if (how === 'walmart' && app.canWalmart) {
         const r = await orderWalmart(lines);
         note = `Walmart opened with ${r.found.length} item${r.found.length === 1 ? '' : 's'} in your cart — sign in with your Walmart+ account to check out with free delivery.${r.missing.length ? ` Not found: ${r.missing.join(', ')}.` : ''}`;
       }

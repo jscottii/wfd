@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS = {
 export const app = $state({ pantry: [],
   ready: false, session: null, user: null, household: null, error: '', toast: '',
   settings: { ...DEFAULT_SETTINGS }, stores: [], items: [], prices: {}, recipes: [], plan: { household: 3, days: [] }, purchases: [],
-  members: [], invites: [], hasSerpKey: false, hasInstacartKey: false, households: [], myInvites: [], pendingJoin: null, weeks: [], carts: [], serpUsage: { n: 0, limit: 230 }, plus: false, canPay: false
+  members: [], invites: [], hasSerpKey: false, hasInstacartKey: false, households: [], myInvites: [], pendingJoin: null, weeks: [], carts: [], serpUsage: { n: 0, limit: 230 }, plus: false, canPay: false, canWalmart: false
 });
 
 /* ---------------- derived helpers ---------------- */
@@ -190,7 +190,7 @@ export async function loadAll() {
   app.hasSerpKey = !!key.data;
   sb.rpc('has_instacart_key').then(({ data }) => (app.hasInstacartKey = !!data));
   sb.from('entitlements').select('plus').eq('user_id', app.user?.id).maybeSingle().then(({ data }) => (app.plus = !!data?.plus));
-  callProxy({ action: 'capabilities' }).then((c) => { app.hasInstacartKey = !!c.instacart; app.hasSerpKey = !!c.serp; app.canPay = !!c.stripe; }).catch(() => {});
+  callProxy({ action: 'capabilities' }).then((c) => { app.hasInstacartKey = !!c.instacart; app.hasSerpKey = !!c.serp; app.canWalmart = !!c.walmart; app.canPay = !!c.stripe; }).catch(() => {});
   app.serpUsage = { n: use.data?.n || 0, limit: Number(app.settings.serpMonthlyLimit) || 230 };
   app.pantry = pan.error ? [] : pan.data;
   // trips now rank mainly on grocery cost: move the old $25/hr default for your time down to $5/hr

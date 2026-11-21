@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     if (body.action === 'capabilities') {
       // which shared services the app can use (never returns the keys themselves)
       const { data: sec } = await admin.from('household_secrets').select('serpapi_key, instacart_key').eq('household_id', hid).maybeSingle();
-      return json({ instacart: !!(sec?.instacart_key || Deno.env.get('INSTACART_API_KEY')), serp: !!(sec?.serpapi_key || Deno.env.get('SERPAPI_KEY')),
+      return json({ instacart: !!(sec?.instacart_key || Deno.env.get('INSTACART_API_KEY')), serp: !!sec?.serpapi_key, walmart: !!(sec?.serpapi_key || Deno.env.get('SERPAPI_KEY')),
         stripe: !!Deno.env.get('STRIPE_SECRET_KEY') });
     }
 
@@ -166,7 +166,8 @@ Deno.serve(async (req) => {
         return json({ location: hit ? String(hit.canonical_name).replace(/,/g, ', ') : `${body.state || 'California'}, United States` });
       }
       const { data: sec } = await admin.from('household_secrets').select('serpapi_key').eq('household_id', hid).maybeSingle();
-      const key = (sec?.serpapi_key || Deno.env.get('SERPAPI_KEY') || '').trim();
+      // the app-wide key (SERPAPI_KEY) is only for Walmart+ carts; live price checks need a household's own key
+      const key = (sec?.serpapi_key || (body.action === 'serp-walmart-cart' ? Deno.env.get('SERPAPI_KEY') : '') || '').trim();
       if (!key) return json({ error: 'Live price checks aren’t switched on for this app yet.' }, 400);
 
       if (body.action === 'serp-account') {
