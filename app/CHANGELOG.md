@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.2.2 — Nov 21, 2026
+- Home addresses on streets not yet on the map now work: the app uses the town/ZIP for distances and says so.
+
 ## 1.2.1 — Nov 21, 2026
 - Leftovers land on a random later meal 1–3 days after cooking (not always the next day's lunch).
 

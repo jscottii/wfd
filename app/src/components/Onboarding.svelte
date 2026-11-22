@@ -47,15 +47,16 @@
   async function saveHome() {
     homeBusy = 'save'; err = '';
     try {
-      await geocode(addr);   // make sure we can find it on the map
+      const g = await geocode(addr);   // make sure we can find it on the map
       await saveSettings({ homeAddress: addr.trim(), homeSet: true });
+      if (g.approx) homeNote = `Your street isn't on the map yet, so distances use ${g.near || 'your town'} — close enough to find stores. `;
       // the grocery chains around you become your stores
       try {
         const near = (await findLocalChains(addr, app.stores, Number(app.settings.storeRadius) || 25)).filter((b) => !b.known).slice(0, 6);
-        if (near.length) { await addLocalStores(near); homeNote = `Added ${near.map((b) => b.brand).join(', ')} near you.`; }
+        if (near.length) { await addLocalStores(near); homeNote += `Added ${near.map((b) => b.brand).join(', ')} near you.`; }
       } catch { /* the store map can be busy; stores can be added later in More → Stores */ }
-      if (app.settings.onboarded) { homeBusy = ''; step = 'homedone'; } else { homeBusy = ''; step = 'pick'; }
-    } catch (e) { err = 'We couldn’t find that address — try adding the city and ZIP.'; homeBusy = ''; }
+      if (app.settings.onboarded || homeNote) { homeBusy = ''; step = 'homedone'; } else { homeBusy = ''; step = 'pick'; }
+    } catch (e) { err = 'We couldn’t find that address or its town — check the city and ZIP.'; homeBusy = ''; }
   }
   $effect(() => { if (step === 'close') onclose(); });
   async function skip() { await saveSettings({ onboarded: true, onboardSkipped: true }).catch(() => {}); onclose(); }
@@ -76,7 +77,7 @@
     {:else if step === 'homedone'}
       <h2 style="margin-top:0">✓ Home saved</h2>
       <p class="small">{homeNote || 'You can add stores near you any time in More → Stores.'}</p>
-      <button onclick={onclose}>Done</button>
+      <button onclick={() => (app.settings.onboarded ? onclose() : (step = 'pick'))}>{app.settings.onboarded ? 'Done' : 'Next'}</button>
     {:else if step === 'pick'}
       <h2 style="margin-top:0">What do you love to eat?</h2>
       <p class="small muted" style="margin-top:0">Pick your favorite cuisines and we'll start you off with {TOTAL} meals to plan from. You can change them any time.</p>

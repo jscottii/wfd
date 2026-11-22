@@ -28,11 +28,23 @@ export async function geocode(addr) {
       g.city = a.city || a.town || a.village || ''; g.state = a.state || ''; g.label = [a.road, g.city].filter(Boolean).join(', ') || g.label;
     } catch (_) {}
   } else {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=us&q=${encodeURIComponent(addr)}`);
-    const j = await r.json();
-    if (!j[0]) throw new Error(`Couldn't find "${addr}" on the map. Try a fuller address.`);
+    // New streets are often missing from the map: fall back to the street without the number, then the town + ZIP,
+    // then the ZIP. Close enough to find stores and plan trips; the address stays as typed.
+    const parts = addr.split(',').map((x) => x.trim()).filter(Boolean);
+    const zip = (addr.match(/\b\d{5}\b/) || [])[0];
+    const tries = [addr, parts.length > 1 ? [parts[0].replace(/^\d+[a-z]?\s+/i, ''), ...parts.slice(1)].join(', ') : '', parts.length > 1 ? parts.slice(1).join(', ') : '', zip || ''];
+    let j = [], used = 0;
+    for (let t = 0; t < tries.length; t++) {
+      const q = tries[t]; if (!q || (t > 0 && q === tries[t - 1])) continue;
+      if (t > 0) await new Promise((res) => setTimeout(res, 1100));   // the free map service allows ~1 lookup a second
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=us&q=${encodeURIComponent(q)}`);
+      j = r.ok ? await r.json() : [];
+      if (j[0]) { used = t; break; }
+    }
+    if (!j[0]) throw new Error(`Couldn't find "${addr}" on the map. Check the city and ZIP.`);
     const a = j[0].address || {};
-    g = { lat: +j[0].lat, lng: +j[0].lon, city: a.city || a.town || a.village || a.suburb || '', state: a.state || '', label: addr };
+    g = { lat: +j[0].lat, lng: +j[0].lon, city: a.city || a.town || a.village || a.suburb || '', state: a.state || '', label: addr,
+      approx: used > 0, near: used > 0 ? [a.city || a.town || a.village || a.hamlet || a.suburb || a.county, a.state, a.postcode].filter(Boolean).join(', ') : '' };
   }
   cache(key, g);
   return g;
