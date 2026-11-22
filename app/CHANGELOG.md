@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.2.3 — Nov 21, 2026
+- Fix: popups (first-time setup, receipt, etc.) scroll on small screens, so their buttons are always reachable; setup buttons stay pinned at the bottom.
+
 ## 1.2.2 — Nov 21, 2026
 - Home addresses on streets not yet on the map now work: the app uses the town/ZIP for distances and says so.
 

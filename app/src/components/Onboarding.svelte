@@ -85,7 +85,7 @@
       <div class="row" style="gap:4px">{#each CUISINES as [c]}<button class="chip" class:on={liked.includes(c)} onclick={() => toggle(c)}>{liked.includes(c) ? '♥ ' : ''}{c}</button>{/each}</div>
       <h3 style="margin:16px 0 6px">Any diets or allergies?</h3>
       <MealPrefs compact />
-      <div class="row" style="margin-top:14px">
+      <div class="row sticky-actions">
         <button onclick={build} disabled={!liked.length}>Get my {TOTAL} meals</button>
         <button class="quiet" onclick={skip}>Not now</button>
       </div>
@@ -102,4 +102,7 @@
   </div>
 </div>
 
-<style>.onboard { max-width: 560px; }</style>
+<style>
+  .onboard { max-width: 560px; }
+  .sticky-actions { position: sticky; bottom: -14px; background: var(--card); padding: 12px 0 6px; margin-top: 14px; border-top: 1px solid var(--line); }
+</style>

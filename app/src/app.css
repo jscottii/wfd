@@ -120,8 +120,10 @@ nav.tabs button.on { color: var(--accent); }
 .hhbar button { font-size: 13px; }
 .brand .hh { display: block; margin-top: 8px; background: var(--tint); color: var(--ink); font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 8px; }
 @media (min-width: 900px) { .hhbar { display: none; } }
-.modal-back { position: fixed; inset: 0; background: #0006; display: grid; place-items: center; z-index: 100; padding: 16px; }
-.modal { max-width: 440px; width: 100%; margin: 0; box-shadow: 0 10px 40px #0003; }
+.modal-back { position: fixed; inset: 0; background: #0006; display: grid; place-items: center; z-index: 100; padding: 16px; padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
+.modal { max-width: 440px; width: 100%; margin: 0; box-shadow: 0 10px 40px #0003; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+/* while a popup is open, the page behind it doesn't scroll */
+body:has(.modal-back) { overflow: hidden; }
 .cartbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin: 8px 0 12px; box-shadow: 0 2px 10px #0000000d; }
 .cartbar .big { font-size: 22px; }
 
@@ -141,7 +143,7 @@ nav.tabs button.on { color: var(--accent); }
 .sheet { position: fixed; right: 12px; bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 84px); width: min(360px, calc(100vw - 24px)); background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; z-index: 51; box-shadow: 0 10px 30px rgba(0,0,0,.2); max-height: 70vh; overflow: auto; }
 .sheet-row { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 6px 0; font-weight: 400; justify-content: flex-start; }
 .sheet-row.on { border-color: var(--accent); background: var(--accent-soft); }
-.modal.receipt-modal { max-width: 760px; width: calc(100vw - 24px); max-height: 90vh; overflow: auto; position: relative; }
+.modal.receipt-modal { max-width: 760px; width: calc(100vw - 24px); position: relative; }
 .modal-x { position: absolute; right: 8px; top: 8px; }
 @media (min-width: 900px) { .cart-fab { bottom: 24px; right: 24px; } .sheet { bottom: 96px; right: 24px; } }
 
