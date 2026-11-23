@@ -23,7 +23,7 @@
   import AnchorAd from './components/AnchorAd.svelte';
   import WhatsNew from './components/WhatsNew.svelte';
   // after an update, once: what changed (first-ever open just records the version)
-  let showNew = $state((() => { try { const v = localStorage.getItem('wfd-seen-version'); if (!v) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } return v !== __APP_VERSION__; } catch { return false; } })());
+  let showNew = $state((() => { try { let v = localStorage.getItem('wfd-seen-version'); if (!v) { const existing = Object.keys(localStorage).some((k) => /^mp-|auth-token/.test(k)); if (!existing) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } v = '1.4.1'; localStorage.setItem('wfd-seen-version', v); } return v !== __APP_VERSION__; } catch { return false; } })());
   if (typeof window !== 'undefined') window.addEventListener('wfd-whats-new', () => (showAllNew = true));
   let showAllNew = $state(false);
   import { needsName } from './lib/hhname.js';
