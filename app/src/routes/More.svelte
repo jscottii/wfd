@@ -287,5 +287,5 @@
     <p class="small muted" style="margin-top:0">Questions, bugs or ideas — send them here.</p>
     <Feedback />
   </div>
-  <p class="small muted" style="text-align:center;margin-top:20px"><a href="https://jscottii.github.io/wfd/privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="https://jscottii.github.io/wfd/support.html" target="_blank" rel="noopener">Help</a> · <a href="#contact" onclick={(e) => { e.preventDefault(); document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }); }}>Contact us</a> · WFD v{__APP_VERSION__} <span title="Build date">({__BUILD_DATE__})</span></p>
+  <p class="small muted" style="text-align:center;margin-top:20px"><a href="https://jscottii.github.io/wfd/privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="https://jscottii.github.io/wfd/support.html" target="_blank" rel="noopener">Help</a> · <a href="#contact" onclick={(e) => { e.preventDefault(); document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }); }}>Contact us</a> · <a href="#more" onclick={(e) => { e.preventDefault(); window.dispatchEvent(new Event('wfd-whats-new')); }}>What's new</a> · WFD v{__APP_VERSION__} <span title="Build date">({__BUILD_DATE__})</span></p>
 </div>

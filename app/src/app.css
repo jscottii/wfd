@@ -215,3 +215,8 @@ body:has(.prep-focus) { overflow: hidden; }
 /* timers stay visible on top of full screen; the tab bar and cart button hide behind it */
 body:has(.prep-focus) .timers { position: fixed !important; top: auto !important; left: 0; right: 0; bottom: 0; z-index: 310 !important; border-top: 1px solid var(--line); border-bottom: 0 !important; padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; }
 body:has(.prep-focus .stepnav) .prep-focus { padding-bottom: 120px; }
+/* the pinned ad above the tab bar: lift the cart button and leave room under the page */
+body.with-anchor { padding-bottom: calc(var(--nav) + 58px + env(safe-area-inset-bottom)); }
+body.with-anchor .cart-fab { bottom: calc(var(--nav) + 58px + env(safe-area-inset-bottom) + 14px); }
+body.with-anchor .toast { bottom: calc(var(--nav) + 72px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { body.with-anchor .cart-fab { bottom: 82px; } }

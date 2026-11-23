@@ -8,7 +8,12 @@ export const APP_URL = 'https://jscottii.github.io/wfd/';
 // Web ads: your Google AdSense publisher ID (ca-pub-…) and one display ad slot ID.
 export const ADSENSE_CLIENT = '';
 export const ADSENSE_SLOT = '';
-// Phone-app ads (AdMob) are added once you have an AdMob app ID — see the plans doc.
+// Optional: a separate AdSense slot for the pinned banner above the tab bar (falls back to ADSENSE_SLOT).
+export const ADSENSE_ANCHOR_SLOT = '';
+// Phone-app ads (AdMob): the banner ad-unit IDs (ca-app-pub-…/…). Blank = Google's test ads in the phone app.
+// The AdMob *app* IDs go in ios/App/App/Info.plist (GADApplicationIdentifier) and android/app/src/main/AndroidManifest.xml.
+export const ADMOB_BANNER_IOS = '';
+export const ADMOB_BANNER_ANDROID = '';
 // WFD Plus on the web: a Stripe Payment Link (https://buy.stripe.com/…) and the Stripe customer-portal link for managing it.
 export const STRIPE_PAYMENT_LINK = '';
 export const STRIPE_PORTAL_LINK = '';

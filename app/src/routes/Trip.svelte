@@ -76,6 +76,7 @@
   <p class="muted small">
     {active.length} recipe{active.length === 1 ? '' : 's'}{Object.keys(por).length ? ` · ${Object.values(por).reduce((a, x) => a + x.portions, 0)} portions planned` : ''} · {left} item{left === 1 ? '' : 's'} to buy{bought.length ? `, ${bought.length} already bought` : ''}
   </p>
+  <AdSlot slot="shop" format="banner" />
 
   <div class="card">
     <div class="small muted" style="margin-bottom:6px">Starting from (you always end at home)</div>
@@ -178,5 +179,4 @@
     </div>
   {/if}
   {/if}
-  <AdSlot slot="shop" format="banner" />
 </div>

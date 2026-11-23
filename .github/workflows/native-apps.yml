@@ -31,4 +31,6 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: app/package-lock.json }
       - run: npm ci
       - run: npm run build:native && npx cap sync ios
+      - name: Add the Live Activity widget
+        run: (gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document) && ruby scripts/add-live-activity.rb
       - run: xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -40

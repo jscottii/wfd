@@ -84,7 +84,7 @@
     <input placeholder="Search saved recipes" bind:value={q} style="margin:6px 0" />
     <div class="card">
       {#each list as r, ri}
-        {#if ri === 6}<AdSlot slot="recipes-list" format="native" />{/if}
+        {#if ri === 3 || (ri > 3 && (ri - 3) % 8 === 0)}<AdSlot slot="recipes-list" format="native" />{/if}
         <div class="list-row">
           <button class="quiet grow" style="text-align:left;justify-content:flex-start;color:var(--ink);padding:0;display:flex;gap:10px;align-items:center" onclick={() => (open = open === r.id ? null : r.id)}>
             <Dish {r} size={52} />

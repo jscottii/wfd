@@ -15,6 +15,7 @@
   import { freezerPlan, canFreeze } from '../lib/freezer.js';
   import AdSlot from '../components/AdSlot.svelte';
   import { enableUpdates, sendUpdate, notifyStatus } from '../lib/notify.js';
+  import { liveCookDay, endCookDay } from '../lib/live.js';
   let { go } = $props();
 
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -65,15 +66,32 @@
   let usedSel = $state({});
   let pantryDone = $state(false);
   $effect(() => { const prev = untrack(() => usedSel), m = {}; used.forEach((u) => (m[u.p.id] = prev[u.p.id] ?? u.usedUp)); usedSel = m; });
-  async function updatePantryAfterCooking() {
-    const ids = used.filter((u) => usedSel[u.p.id]).map((u) => u.p.id);
+  let undoRows = $state(null);
+  async function updatePantryAfterCooking(auto = false) {
+    if (pantryDone) return;
+    const gone = used.filter((u) => usedSel[u.p.id]).map((u) => u.p);
     try {
-      if (ids.length) await removePantry(ids);
+      pantryDone = true;
+      if (gone.length) await removePantry(gone.map((p) => p.id));
       // the cooked meals themselves go in, so the Pantry shows what's ready to eat
-      await addPantry(recipes.map((r) => ({ name: `${shortTitle(r.title)} (cooked)`, amount: '', place: /yes/i.test(r.freeze || '') && /freez/i.test(r.title + r.ing.join(' ')) ? 'freezer' : 'fridge', use_by: fridgeDays(r) })));
-      pantryDone = true; toast(`✓ Pantry updated: ${ids.length} used up, ${recipes.length} meals added`);
+      const cooked = recipes.map((r) => ({ name: `${shortTitle(r.title)} (cooked)`, amount: '', place: /yes/i.test(r.freeze || '') && /freez/i.test(r.title + r.ing.join(' ')) ? 'freezer' : 'fridge', use_by: fridgeDays(r) }));
+      await addPantry(cooked);
+      undoRows = { gone, cooked: cooked.map((c) => c.name) };
+      track('pantry_after_cook', { used: gone.length, auto });
+      toast(`✓ Pantry updated: ${gone.length} used up, ${recipes.length} meal${recipes.length === 1 ? '' : 's'} added`);
+    } catch (e) { pantryDone = false; err = e.message; }
+  }
+  async function undoPantry() {
+    if (!undoRows) return;
+    try {
+      const add = app.pantry.filter((p) => undoRows.cooked.includes(p.name)).map((p) => p.id);
+      if (add.length) await removePantry(add);
+      if (undoRows.gone.length) await addPantry(undoRows.gone.map(({ id, household_id, added_on, ...rest }) => rest));
+      undoRows = null; pantryDone = false; toast('Pantry put back the way it was');
     } catch (e) { err = e.message; }
   }
+  // finishing the last step updates the pantry by itself (unless switched off)
+  const autoPantry = () => app.settings.autoPantry !== false;
   const fridgeDays = (r) => { const m = String(r.fridge || '').match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*day/i); if (!m) return null; const d = new Date(); d.setDate(d.getDate() + Number(m[1])); return d.toISOString().slice(0, 10); };
 
   // keep the screen on while this tab is open (your choice, remembered on this device)
@@ -235,7 +253,9 @@
     const finished = cur, keys = stepKeys(cur).filter((k) => !done[k]), timers = {};
     keys.forEach((k) => { const t = timerFor(k); if (t) timers[k] = t; });
     if (keys.length) try { await doPrep(keys, [], timers); } catch (e) { err = e.message; }
+    const wasLast = idx >= steps.length - 1;
     move(1);
+    if (wasLast && autoPantry() && recipes.length) updatePantryAfterCooking(true);
     // phone + Apple Watch: what's done, what's next
     if (app.settings.watchUpdates) {
       const nxt = steps[idx];
@@ -245,6 +265,18 @@
         nxt && nxt !== finished ? `Next: ${nxt.title}${nxt.mins ? ` (${fmtMins(nxt.mins, nxt.approx)})` : ''}${nTimers ? ` · ${nTimers} timer${nTimers === 1 ? '' : 's'} running` : ''}${leftTxt}` : 'Cook day finished — nice work.');
     }
   }
+  // iPhone app: keep a Live Activity (Lock Screen / Dynamic Island / Apple Watch) in step with where you are
+  let liveOn = false;
+  $effect(() => {
+    const on = !!app.settings.watchUpdates && steps.length > 0 && (focus || mode === 'steps');
+    const timers = Object.values(app.plan.timers || {}).map((t) => ({ end: t.start + t.mins * 60000, label: t.label })).filter((t) => t.end > Date.now()).sort((a, b) => a.end - b.end);
+    const st = { title: recipes.length === 1 ? recipes[0].title : 'Cook day', step: idx + 1, of: steps.length, text: cur?.title || '', next: steps[idx + 1]?.title || '', timerEnd: timers[0]?.end || '', timerLabel: timers[0]?.label || '' };
+    untrack(() => {
+      if (on) { liveOn = true; liveCookDay(st); }
+      else if (liveOn) { liveOn = false; endCookDay(); }
+    });
+  });
+  $effect(() => () => { if (liveOn) endCookDay(); });
   // full screen: big text, big buttons, nothing else on screen (phone, iPad or desktop)
   let focus = $state(false), touchX = 0;
   async function enterFocus() {
@@ -375,6 +407,7 @@
     </select>
     {#if cart}<span class="muted"> — cooked once for {cart.people || '?'} people</span>{/if}
   </p>
+  {#if recipes.length && !focus}<AdSlot slot="prep" format="banner" />{/if}
   {#if allRecipes.length}
     <div class="seg" style="margin:0 0 8px">
       <button class:on={prepStyle === 'single'} onclick={() => setStyle('single')}>🍽 One meal at a time</button>
@@ -405,7 +438,7 @@
       </div>{:else}<span></span>{/if}
       {#if big && ready && !editSetup}<button class="quiet small" onclick={() => (editSetup = true)}>⚙ Kitchen & serving time</button>{/if}
       {#if mode === 'steps'}<button class="ghost small" onclick={enterFocus} title="Big buttons, nothing else on screen">⛶ Full screen</button>{/if}
-      <label class="row small" style="gap:6px;cursor:pointer" title="A note on your phone (and Apple Watch) each time you finish a step"><span class="switch"><input type="checkbox" checked={!!app.settings.watchUpdates} onchange={(e) => toggleWatch(e.currentTarget.checked)} /><span></span></span> ⌚ Phone & watch updates</label>
+      <label class="row small" style="gap:6px;cursor:pointer" title="A note on your phone (and Apple Watch) each time you finish a step — and a live progress card on the iPhone Lock Screen in the app"><span class="switch"><input type="checkbox" checked={!!app.settings.watchUpdates} onchange={(e) => toggleWatch(e.currentTarget.checked)} /><span></span></span> ⌚ Phone & watch updates</label>
       {#if watchMsg}<p class="err small" style="flex-basis:100%;margin:4px 0 0">{watchMsg}</p>{/if}
       <label class="row small" style="gap:6px;cursor:pointer" title="Stops the screen from dimming while you cook">
         <span class="switch"><input type="checkbox" bind:checked={awake} /><span></span></span> Keep screen on
@@ -554,13 +587,14 @@
           {/each}
           <h3 style="margin-top:14px">🥫 Update your pantry</h3>
           {#if pantryDone}
-            <p class="ok small">✓ Done. The cooked meals are in your Pantry with their fridge dates.</p>
+            <p class="ok small">✓ Done{undoRows?.gone.length ? ` — took out ${undoRows.gone.map((p) => p.name).join(', ')}` : ''}. The cooked meals are in your Pantry with their fridge dates. {#if undoRows}<button class="quiet" style="padding:0 4px" onclick={undoPantry}>Undo</button>{/if}</p>
           {:else}
-            <p class="small muted" style="margin:0 0 4px">Checked = used up today. Staples (spices, oil, freezer items) stay unless you check them.</p>
+            <p class="small muted" style="margin:0 0 4px">Checked = used up today. Staples (spices, oil, freezer items) stay unless you check them.{autoPantry() ? ' This happens by itself when you finish the last step.' : ''}</p>
             {#each used as u}
               <label class="check"><input type="checkbox" bind:checked={usedSel[u.p.id]} /><span class="small">{u.p.name}</span></label>
             {/each}
-            <button style="margin-top:8px" onclick={updatePantryAfterCooking}>Update pantry{used.length ? ` (${used.filter((u) => usedSel[u.p.id]).length} used up)` : ''}</button>
+            <button style="margin-top:8px" onclick={() => updatePantryAfterCooking(false)}>Update pantry now{used.length ? ` (${used.filter((u) => usedSel[u.p.id]).length} used up)` : ''}</button>
+            <label class="row small" style="gap:6px;margin-top:6px"><input type="checkbox" checked={autoPantry()} onchange={(e) => saveSettings({ autoPantry: e.currentTarget.checked })} /> Update the pantry automatically when I finish cooking</label>
           {/if}
           {#each guides as g}{#each g.guide?.sections || [] as s}{#if /where it all goes|freeze|storage/i.test(s.title)}
             <h3 style="margin-top:12px">{s.title}</h3>
@@ -625,5 +659,4 @@
     {/if}
     {/if}
   {/if}
-  {#if recipes.length && !focus}<AdSlot slot="prep" format="banner" />{/if}
 </div>

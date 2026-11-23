@@ -20,6 +20,12 @@
   import More from './routes/More.svelte';
   import TimerDock from './components/TimerDock.svelte';
   import Onboarding from './components/Onboarding.svelte';
+  import AnchorAd from './components/AnchorAd.svelte';
+  import WhatsNew from './components/WhatsNew.svelte';
+  // after an update, once: what changed (first-ever open just records the version)
+  let showNew = $state((() => { try { const v = localStorage.getItem('wfd-seen-version'); if (!v) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } return v !== __APP_VERSION__; } catch { return false; } })());
+  if (typeof window !== 'undefined') window.addEventListener('wfd-whats-new', () => (showAllNew = true));
+  let showAllNew = $state(false);
   import { needsName } from './lib/hhname.js';
   import Admin from './routes/Admin.svelte';
   let showOnboard = $state(false), onboardDismissed = $state(false);
@@ -90,6 +96,7 @@
       <div class="modal receipt-modal card nocollapse"><button class="quiet modal-x" aria-label="Close" onclick={() => (ui.receipt = false)}>✕</button><Receipt {go} onclose={() => (ui.receipt = false)} /></div>
     </div>
   {/if}
+  <AnchorAd {page} />
   <nav class="tabs">
     <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length > 1}<button class="hh" onclick={() => { sessionStorage.setItem('mp-more-tab', 'settings'); go('more'); }}>🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
     {#each TABS as [k, ic, label]}<button class:on={page === k} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
@@ -109,5 +116,6 @@
     </div>
   </div>
 {/if}
+{#if (showNew || showAllNew) && app.ready && app.session && !showOnboard}<WhatsNew all={showAllNew} onclose={() => { showNew = false; showAllNew = false; }} />{/if}
 {#if showOnboard}<Onboarding {go} onclose={() => { showOnboard = false; onboardDismissed = true; }} />{/if}
 {#if app.toast}<div class="toast">{app.toast}</div>{/if}

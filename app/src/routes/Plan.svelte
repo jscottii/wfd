@@ -218,6 +218,7 @@
     {/if}
   </div>
 
+  <AdSlot slot="plan" format="banner" />
   <div class="card">
     <h3 style="margin:0">What's for dinner this week?</h3>
     <p class="small muted" style="margin:4px 0 8px">That's {needN.main} lunch/dinner recipe{needN.main === 1 ? '' : 's'}{needN.breakfast ? `, ${needN.breakfast} breakfast${needN.breakfast === 1 ? '' : 's'}` : ''}{needN.snack ? `, ${needN.snack} snack${needN.snack === 1 ? '' : 's'}` : ''} — each one cooked once and eaten up to twice.</p>
@@ -333,7 +334,6 @@
     </div>
   </div>
   {/if}
-  <AdSlot slot="plan" format="banner" />
 </div>
 
 <style>

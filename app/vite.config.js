@@ -4,12 +4,18 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const built = new Date().toISOString().slice(0, 10);
+// the newest changelog entries, for the in-app "What's new" screen
+const changelog = readFileSync(new URL('./CHANGELOG.md', import.meta.url), 'utf8').split(/^## /m).slice(1, 9).map((sec) => {
+  const [head, ...rest] = sec.split('\n');
+  const [version, date] = head.split(' — ');
+  return { version: version.trim(), date: (date || '').trim(), notes: rest.filter((l) => l.startsWith('- ')).map((l) => l.slice(2).trim()) };
+});
 
 // `vite build --mode native` makes the copy that ships inside the iPhone/Android app (no service worker, relative paths)
 export default defineConfig(({ mode }) => ({
   base: mode === 'native' ? './' : '/wfd/',
   build: mode === 'native' ? { outDir: 'dist-native' } : {},
-  define: { __NATIVE__: JSON.stringify(mode === 'native'), __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_DATE__: JSON.stringify(built) },
+  define: { __NATIVE__: JSON.stringify(mode === 'native'), __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_DATE__: JSON.stringify(built), __CHANGELOG__: JSON.stringify(changelog) },
   plugins: [
     svelte(),
     mode !== 'native' && VitePWA({

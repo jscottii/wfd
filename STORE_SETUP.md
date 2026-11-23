@@ -12,7 +12,7 @@ Everything below is a one-time setup. After it, a new test build is: **GitHub �
    - `ASC_ISSUER_ID` — the Issuer ID
    - `ASC_KEY_P8_BASE64` — the .p8 file, base64-encoded (Mac: `base64 -i AuthKey_XXXX.p8 | pbcopy`)
    - `APPLE_TEAM_ID` — the Team ID
-6. Run the workflow. About 15 minutes after it finishes, the build appears in **TestFlight**. Add yourself (and up to 100 people on your team) as **internal testers**; they install the TestFlight app and get an invite.
+6. Run the workflow. It also builds the **Lock Screen / Apple Watch cook-day card** (the `LiveActivity` widget, bundle ID `com.jscottii.wfd.LiveActivity`); Apple registers that ID for you on the first run. About 15 minutes after it finishes, the build appears in **TestFlight**. Add yourself (and up to 100 people on your team) as **internal testers**; they install the TestFlight app and get an invite.
 7. For testers outside your team (**external testing**), fill in the test info and submit the build for Beta App Review (usually a day).
 
 ## Android (Google Play internal testing)
@@ -30,3 +30,28 @@ Everything below is a one-time setup. After it, a new test build is: **GitHub �
 - Screenshots (iPhone 6.7" and 6.5"; Android phone), a 1024×1024 icon (already in `app/resources`), a short and full description.
 - Data-safety / privacy answers: email (account), recipes/plans/pantry (app function), approximate location (store search, not tracked). If ads are switched on: device ID for advertising, and Apple's tracking prompt.
 - Account deletion is in the app (More → Settings → Delete account), which both stores require.
+
+## Ads and WFD Plus (money)
+Nothing below changes until the IDs are filled in. The app code is ready for each one.
+
+### Web ads — Google AdSense
+1. Sign up at adsense.google.com with the Google account you want paid to, and add the site **jscottii.github.io**. GitHub Pages sites on a shared domain are often refused; a custom domain (e.g. whatsfordinner.app pointed at GitHub Pages) gets approved much more easily.
+2. Google asks you to paste a verification snippet into the site's `<head>`. Send it to Claude and it'll add it to `index.html`.
+3. Once approved: **Ads → By ad unit → Display ads**. Make one called *WFD in-page* (responsive). Optionally make a second called *WFD pinned* for the bar above the tab bar.
+4. Put the IDs in `app/src/lib/config.js`: `ADSENSE_CLIENT` (ca-pub-…), `ADSENSE_SLOT`, and optionally `ADSENSE_ANCHOR_SLOT`. Then push.
+5. AdSense also needs an `ads.txt` file at the site root. Claude adds it from your publisher ID.
+
+### Phone-app ads — Google AdMob
+1. Sign up at admob.google.com (same Google account is fine). **Apps → Add app** twice: iOS (*WFD*, link it once it's on the App Store) and Android (`com.jscottii.wfd`).
+2. For each app, make one **Banner** ad unit.
+3. Give Claude the two **app IDs** (ca-app-pub-…~…) and two **banner unit IDs** (ca-app-pub-…/…). They go in `Info.plist`, `AndroidManifest.xml` and `config.js`. Until then the phone app shows Google's **test ads**, which earn nothing and are safe to tap.
+4. AdMob → **Privacy & messaging**: create a **GDPR** message (needed for EU/UK users; the app shows it automatically) and an **IDFA explainer** for iPhone.
+5. In the App Store privacy answers, add "Device ID — third-party advertising" and keep the tracking prompt (already in the app).
+
+### WFD Plus (ad-free) — Stripe on the web
+1. Sign up at stripe.com and finish the business details (Stripe asks for your bank account and tax info; do this yourself).
+2. **Product catalog → Add product**: *WFD Plus*, recurring, e.g. $2.99/month. Create a **Payment Link** for it. Under **After payment**, choose to redirect to https://jscottii.github.io/wfd/#more.
+3. **Settings → Billing → Customer portal**: turn it on and copy its link.
+4. Put both links in `config.js` (`STRIPE_PAYMENT_LINK`, `STRIPE_PORTAL_LINK`).
+5. Supabase → Edge Functions → Secrets: add `STRIPE_SECRET_KEY`, deploy `stripe-webhook` with JWT verification off, then in Stripe **Developers → Webhooks → Add endpoint** `https://osyhpifmegqotdfdlave.supabase.co/functions/v1/stripe-webhook` for `checkout.session.completed`, `customer.subscription.updated` and `customer.subscription.deleted`. Add its signing secret as `STRIPE_WEBHOOK_SECRET`.
+6. In the iPhone/Android apps, Apple and Google require their own in-app purchase for ad-free, so the Stripe button is hidden there. Store subscriptions are a later step.

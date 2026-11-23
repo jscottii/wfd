@@ -116,9 +116,14 @@ export function rankByPantry(recipes, pantry, items, priceOf = () => 0) {
 /** After cook day: which pantry rows this week's recipes probably used up (fresh food yes, staples no). */
 export function usedByRecipes(recipes, pantry, items) {
   const ids = new Set(recipes.flatMap((r) => Object.keys(r.items || {})));
-  return pantry.filter((p) => p.item_id && ids.has(p.item_id)).map((p) => {
-    const it = items.find((i) => i.id === p.item_id);
-    const staple = /pantry|spice|baking|condiment|oil|dry/i.test(it?.cat || '') || p.place === 'pantry' || p.place === 'freezer';
+  const lines = recipes.flatMap((r) => (r.ing || []).map((l) => tokens(l)));
+  return pantry.filter((p) => !/\(cooked\)$/i.test(p.name || '')).map((p) => {
+    const it = p.item_id ? items.find((i) => i.id === p.item_id) : null;
+    // linked to a recipe's shopping item, or (scanned/typed items) every word of its name appears in one ingredient line
+    const nameWords = tokens(p.name || it?.name || '');
+    const hit = (p.item_id && ids.has(p.item_id)) || (nameWords.length && lines.some((l) => nameWords.every((w) => l.includes(w))));
+    if (!hit) return null;
+    const staple = /pantry|spice|baking|condiment|oil|dry/i.test(it?.cat || p.cat || '') || p.place === 'pantry' || p.place === 'freezer';
     return { p, usedUp: !staple };
-  });
+  }).filter(Boolean);
 }

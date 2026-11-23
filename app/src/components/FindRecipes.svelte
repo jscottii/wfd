@@ -83,7 +83,8 @@
 
   {#if busy === 'look' && !ideas.length}<p class="small muted"><span class="spinner"></span> Looking…</p>{/if}
   <div class="ideas">
-    {#each ideas.slice(0, 24) as i (i.id)}
+    {#each ideas.slice(0, 24) as i, n (i.id)}
+      {#if n === 4}<div style="grid-column:1/-1"><AdSlot slot="find-recipes" format="native" /></div>{/if}
       <div class="idea">
         <img src={i.thumb + '/preview'} alt="" loading="lazy" />
         <div style="flex:1;min-width:0"><b class="small">{i.title}</b>{#if i.area}<div class="small muted">{i.area}</div>{/if}</div>
@@ -100,7 +101,7 @@
       </div>
     {/each}
   </div>
-  {#if ideas.length > 6}<AdSlot slot="find-recipes" format="rect" />{/if}
+  {#if ideas.length > 12}<AdSlot slot="find-recipes-end" format="rect" />{/if}
   <p class="small muted" style="margin-top:8px">Tap + to save a recipe to your Saved recipes, with its shopping items.</p>
 </div>
 

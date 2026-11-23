@@ -5,6 +5,13 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.5.0 — Nov 23, 2026
+- Ads in more visible places: a slim banner pinned above the tab bar on Plan, Shop, Pantry and Saved recipes (✕ hides it for the visit), and in-page ads moved near the top of each screen. In the phone app the pinned banner is an AdMob ad (test ads until the real IDs are in).
+- Cook day on your Lock Screen: in the iPhone app, a live card shows the step you're on, progress, what's next and the next timer counting down. It also appears in the Dynamic Island and on Apple Watch. Turn on ⌚ Phone & watch updates in Prep.
+- Pantry updates itself after cooking: finishing the last step takes out the fresh things you used and adds the cooked meals, with Undo. It now catches scanned items too. You can switch it off.
+- What's new: after an update you'll see this list once; it's also linked at the bottom of More.
+- Phone app: camera permission covers pantry scanning.
+
 ## 1.4.1 — Nov 23, 2026
 - Fix: the pantry picker on Plan didn't appear when some saved recipes used none of your pantry items.
 

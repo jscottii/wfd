@@ -21,6 +21,9 @@ jobs:
       - name: Build web app
         if: env.HAS_SECRETS == 'true'
         run: npm ci && npm run build:native && npx cap sync ios
+      - name: Add the Live Activity widget
+        if: env.HAS_SECRETS == 'true'
+        run: (gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document) && ruby scripts/add-live-activity.rb
       - name: App Store Connect key
         if: env.HAS_SECRETS == 'true'
         run: |
