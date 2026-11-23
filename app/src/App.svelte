@@ -50,7 +50,7 @@
     <div class="card nocollapse">
       <h3 style="margin-top:0">Start a new household</h3>
       <p class="small muted">Your recipes, plans, pantry and shopping lists live in a household. You can invite others later.</p>
-      <div class="row"><input class="grow" bind:value={fixName} placeholder="e.g. The Scotts" /><button onclick={fixCreate} disabled={fixBusy}>{#if fixBusy}<span class="spinner"></span>{/if} Create</button></div>
+      <div class="row"><input class="grow" bind:value={fixName} placeholder="e.g. Smith Family" /><button onclick={fixCreate} disabled={fixBusy}>{#if fixBusy}<span class="spinner"></span>{/if} Create</button></div>
     </div>
     <div class="card nocollapse">
       <h3 style="margin-top:0">Or join one</h3>

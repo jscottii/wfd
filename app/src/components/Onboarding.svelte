@@ -79,7 +79,7 @@
       <h2 style="margin-top:0">Name your household</h2>
       <p class="small muted" style="margin-top:0">It's what people see when you invite them to plan and shop with you. You can change it later in More → Settings.</p>
       {#if err}<div class="err small">⚠️ {err}</div>{/if}
-      <input bind:value={hhName} placeholder="e.g. The Scott House" maxlength="40" onkeydown={(e) => e.key === 'Enter' && hhName.trim() && saveName()} />
+      <input bind:value={hhName} placeholder="e.g. Smith Family" maxlength="40" onkeydown={(e) => e.key === 'Enter' && hhName.trim() && saveName()} />
       <div class="row" style="margin-top:12px">
         <button onclick={saveName} disabled={!hhName.trim() || nameBusy}>{#if nameBusy}<span class="spinner"></span>{/if} Save name</button>
         <button class="quiet" onclick={skipName}>Skip</button>
