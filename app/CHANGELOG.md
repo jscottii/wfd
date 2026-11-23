@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.4.1 — Nov 23, 2026
+- Fix: the pantry picker on Plan didn't appear when some saved recipes used none of your pantry items.
+
 ## 1.4.0 — Nov 23, 2026
 - Pantry → 📷 Add with the camera: scan barcodes one after another (product names looked up automatically; scan twice to count 2), check the list, then add. A "photo of a shelf or fridge" option turns on once photo recognition is set up on the server.
 - Plan → Cook from your pantry: pick which pantry items to use (use-soon items picked for you). Each item shows how many of your saved recipes it goes in; saved recipes rank by how many of your picks they use; "New recipes using these" finds fresh ideas that use them, and + saves one straight into this week. Pick for me favors your picks too.

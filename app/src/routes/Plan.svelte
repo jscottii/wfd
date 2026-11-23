@@ -69,7 +69,7 @@
   // Cook from the pantry: pick the items you want to use up; recipes are ranked by how many of them they use.
   let onHand = $derived(app.pantry.filter((p) => !['low', 'out'].includes(p.level)));
   // how many saved recipes each pantry item could anchor
-  let mealsFor = $derived(Object.fromEntries(onHand.map((p) => [p.id, app.recipes.filter((r) => rankByPantry([r], [p], app.items, priceOf)[0].got.length).length])));
+  let mealsFor = $derived(Object.fromEntries(onHand.map((p) => [p.id, rankByPantry(app.recipes, [p], app.items, priceOf).filter((x) => x?.got?.length).length])));
   let pickedP = $state(null);   // null = not chosen yet → defaults to the use-soon items
   let chosen = $derived(pickedP ?? onHand.filter((p) => { const d = daysLeft(p.use_by); return d != null && d <= 3; }).map((p) => p.id));
   let chosenRows = $derived(onHand.filter((p) => chosen.includes(p.id)));
