@@ -13,6 +13,8 @@
   import { tap } from '../lib/native.js';
   import Tonight from '../components/Tonight.svelte';
   import { freezerPlan, canFreeze } from '../lib/freezer.js';
+  import AdSlot from '../components/AdSlot.svelte';
+  import { enableUpdates, sendUpdate, notifyStatus } from '../lib/notify.js';
   let { go } = $props();
 
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -230,10 +232,47 @@
   // "Done → Next": tick everything on this step (and start timers for anything cooking), then move on
   async function doneNext() {
     unlockAudio();
-    const keys = stepKeys(cur).filter((k) => !done[k]), timers = {};
+    const finished = cur, keys = stepKeys(cur).filter((k) => !done[k]), timers = {};
     keys.forEach((k) => { const t = timerFor(k); if (t) timers[k] = t; });
     if (keys.length) try { await doPrep(keys, [], timers); } catch (e) { err = e.message; }
     move(1);
+    // phone + Apple Watch: what's done, what's next
+    if (app.settings.watchUpdates) {
+      const nxt = steps[idx];
+      const nTimers = Object.keys(timers).length;
+      const leftTxt = big && serveDate ? ` · ${left(serveDate.getTime() - Date.now())}` : '';
+      sendUpdate(idx >= steps.length - 1 && finished === nxt ? '✓ All done!' : `✓ ${finished.title}`,
+        nxt && nxt !== finished ? `Next: ${nxt.title}${nxt.mins ? ` (${fmtMins(nxt.mins, nxt.approx)})` : ''}${nTimers ? ` · ${nTimers} timer${nTimers === 1 ? '' : 's'} running` : ''}${leftTxt}` : 'Cook day finished — nice work.');
+    }
+  }
+  // full screen: big text, big buttons, nothing else on screen (phone, iPad or desktop)
+  let focus = $state(false), touchX = 0;
+  async function enterFocus() {
+    unlockAudio(); focus = true; awake = true;
+    try { if (document.documentElement.requestFullscreen && !document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {}
+  }
+  async function exitFocus() { focus = false; try { if (document.fullscreenElement) await document.exitFullscreen(); } catch {} }
+  $effect(() => { const f = () => { if (!document.fullscreenElement && focus && document.documentElement.requestFullscreen) focus = false; }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f); });
+  function focusKey(e) {
+    if (!focus || e.target.closest?.('input, select, textarea')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doneNext(); }
+    else if (e.key === 'Escape') exitFocus();
+  }
+  const swipeStart = (e) => (touchX = e.touches[0].clientX);
+  const swipeEnd = (e) => { const dx = e.changedTouches[0].clientX - touchX; if (Math.abs(dx) > 70) move(dx < 0 ? 1 : -1); };
+  // updates to phone & watch
+  let watchMsg = $state('');
+  async function toggleWatch(on) {
+    watchMsg = '';
+    if (on) {
+      const st = notifyStatus();
+      if (st === 'needs-home-screen') { watchMsg = 'On iPhone, add WFD to your Home Screen first (Share → Add to Home Screen), then turn this on from there.'; return; }
+      if (!(await enableUpdates())) { watchMsg = 'Notifications are blocked — allow them for WFD in your phone or browser settings.'; return; }
+      sendUpdate('⌚ Updates on', 'You’ll get a note here each time you finish a step, and when timers go off.');
+    }
+    saveSettings({ watchUpdates: on }).catch(() => {});
   }
 
   let loading = $state(''), err = $state('');
@@ -326,6 +365,7 @@
   </div>
 {/snippet}
 
+<svelte:window onkeydown={focusKey} />
 <div class="page wide" style="padding-bottom:calc(var(--nav) + 90px)">
   <h1>{!big && mode === 'simple' ? "What's for dinner" : 'Cook day'}</h1>
   <p class="sentence small" style="margin:0 0 8px">Cooking from
@@ -364,6 +404,9 @@
         <button class:on={mode === 'overview'} onclick={() => (mode = 'overview')}>Overview</button>
       </div>{:else}<span></span>{/if}
       {#if big && ready && !editSetup}<button class="quiet small" onclick={() => (editSetup = true)}>⚙ Kitchen & serving time</button>{/if}
+      {#if mode === 'steps'}<button class="ghost small" onclick={enterFocus} title="Big buttons, nothing else on screen">⛶ Full screen</button>{/if}
+      <label class="row small" style="gap:6px;cursor:pointer" title="A note on your phone (and Apple Watch) each time you finish a step"><span class="switch"><input type="checkbox" checked={!!app.settings.watchUpdates} onchange={(e) => toggleWatch(e.currentTarget.checked)} /><span></span></span> ⌚ Phone & watch updates</label>
+      {#if watchMsg}<p class="err small" style="flex-basis:100%;margin:4px 0 0">{watchMsg}</p>{/if}
       <label class="row small" style="gap:6px;cursor:pointer" title="Stops the screen from dimming while you cook">
         <span class="switch"><input type="checkbox" bind:checked={awake} /><span></span></span> Keep screen on
       </label>
@@ -421,6 +464,14 @@
     {/each}
 
     {#if mode === 'steps' && cur}
+     <div class="prep-stage" class:prep-focus={focus} role="region" aria-label="Cooking steps" ontouchstart={swipeStart} ontouchend={swipeEnd}>
+     {#if focus}
+       <div class="focus-top">
+         <span class="small"><b>Step {idx + 1} of {steps.length}</b>{big && serveDate ? ` · ${left(serveDate.getTime() - now)}` : ''}</span>
+         <div class="focus-progress" aria-hidden="true"><span style="width:{(100 * doneCount) / Math.max(1, allKeys.length)}%"></span></div>
+         <button class="ghost" onclick={exitFocus} aria-label="Exit full screen">✕ Exit</button>
+       </div>
+     {/if}
      {#if big}
        {@const behind = starts[idx] ? Math.round((now - starts[idx].getTime()) / 60000) : 0}
        <div class="statusbar">
@@ -528,6 +579,9 @@
        <h3>All steps</h3>
        {#each steps as s, i}<button class:on={i === idx} class:done={stepDone(s)} onclick={() => { at = i; window.scrollTo(0, 0); }}>{stepDone(s) ? '✓' : i + 1}. {big && starts[i] ? clock(starts[i]) + ' · ' : ''}{s.label}</button>{/each}
      </aside></div>
+     {#if focus && steps[idx + 1]}<p class="focus-next small">Up next: <b>{steps[idx + 1].title}</b>{steps[idx + 1].mins ? ` · ${fmtMins(steps[idx + 1].mins, steps[idx + 1].approx)}` : ''} <span class="muted">· swipe or use ← → keys</span></p>{/if}
+     {#if focus}<div class="focus-ad"><AdSlot slot="prep-fullscreen" format="banner" /></div>{/if}
+     </div>
     {:else}
       <button style="width:100%;margin-bottom:10px" onclick={resume}>▶ {doneCount ? 'Pick up where you left off' : 'Start cooking'}: step {firstUndone + 1} · {steps[firstUndone]?.label}</button>
       <div class="card">
@@ -571,4 +625,5 @@
     {/if}
     {/if}
   {/if}
+  {#if recipes.length && !focus}<AdSlot slot="prep" format="banner" />{/if}
 </div>

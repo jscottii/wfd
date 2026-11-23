@@ -62,7 +62,7 @@
     <div class="card">
       <h3 style="margin-top:0">Ad slots</h3>
       <label class="row small" style="gap:8px;cursor:pointer"><span class="switch"><input type="checkbox" checked={!!app.settings.adPreview} onchange={(e) => { saveSettings({ adPreview: e.currentTarget.checked }); toast(e.currentTarget.checked ? 'Ad previews on — only you see them' : 'Ad previews off'); }} /><span></span></span> Preview ad slots in the app (only admins see previews)</label>
-      <p class="small muted" style="margin:6px 0 0">Slots: Plan (banner), Shop (banner), Pantry (banner), Saved recipes (in-list), Find recipes (box). Never on Prep or Tonight. {app.plus ? '' : ''}Live ads start when AdSense IDs are added; numbers below include previews until then.</p>
+      <p class="small muted" style="margin:6px 0 0">Slots: Plan, Shop, Pantry, Prep and Prep full screen (banners), Saved recipes (in-list), Find recipes (box). {app.plus ? '' : ''}Live ads start when AdSense IDs are added; numbers below include previews until then.</p>
     </div>
     <div class="tiles">
       <div class="tile"><b>{num(st.ad_impressions)}</b><span>impressions</span></div>

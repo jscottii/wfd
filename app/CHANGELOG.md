@@ -5,6 +5,11 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.3.0 — Nov 23, 2026
+- Full-screen cooking: big step text and buttons, progress bar, "up next", swipe or ← → keys (Enter = Done → Next, Esc = exit); works on phone, iPad and desktop; timers stay visible.
+- Phone & watch updates: a notification each time you finish a step (and when timers go off) — shows on Apple Watch when the iPhone is locked.
+- Ads allowed on Prep (bottom banner, and a small banner in full screen); privacy policy updated.
+
 ## 1.2.3 — Nov 21, 2026
 - Fix: popups (first-time setup, receipt, etc.) scroll on small screens, so their buttons are always reachable; setup buttons stay pinned at the bottom.
 

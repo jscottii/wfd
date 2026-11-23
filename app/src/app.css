@@ -192,3 +192,26 @@ select.inl { padding-right: 2px; }
 .plan-sheet { bottom: auto; top: 50%; right: 50%; transform: translate(50%, -50%); }
 .freezer-pick summary { font-weight: 700; color: var(--accent); cursor: pointer; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-soft); list-style: none; }
 .freezer-pick[open] summary { border-radius: 10px 10px 0 0; }
+
+/* full-screen cooking */
+.prep-focus { position: fixed; inset: 0; z-index: 300; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: max(14px, env(safe-area-inset-top)) clamp(14px, 4vw, 48px) max(14px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+.prep-focus .prep-grid { display: block; flex: 1; max-width: 900px; width: 100%; margin: 0 auto; }
+.prep-focus .prep-aside { display: none !important; }
+.prep-focus .statusbar { position: static; max-width: 900px; width: 100%; margin: 0 auto 4px; }
+.prep-focus h2 { font-size: clamp(26px, 4.5vw, 44px); }
+.prep-focus .box, .prep-focus label, .prep-focus li { font-size: clamp(17px, 2.2vw, 22px); line-height: 1.45; }
+.prep-focus .card { font-size: clamp(16px, 2vw, 20px); }
+.prep-focus input[type=checkbox] { width: 26px; height: 26px; }
+.prep-focus .stepnav { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; gap: 10px; }
+.prep-focus .stepnav button { font-size: 20px; padding: 16px 22px; min-height: 60px; flex: 1; }
+.prep-focus .stepnav select { display: none; }
+.focus-top { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; max-width: 900px; width: 100%; margin: 0 auto; }
+.focus-progress { height: 8px; background: var(--tint); border-radius: 99px; overflow: hidden; }
+.focus-progress span { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+.focus-next { max-width: 900px; width: 100%; margin: 0 auto; text-align: center; }
+.focus-ad { max-width: 520px; width: 100%; margin: 0 auto; }
+body:has(.prep-focus) { overflow: hidden; }
+/* timers stay visible on top of full screen; the tab bar and cart button hide behind it */
+body:has(.prep-focus) .timers { position: fixed !important; top: auto !important; left: 0; right: 0; bottom: 0; z-index: 310 !important; border-top: 1px solid var(--line); border-bottom: 0 !important; padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; }
+body:has(.prep-focus .stepnav) .prep-focus { padding-bottom: 120px; }

@@ -1,5 +1,6 @@
 // Cook-day timer alerts: sound, vibration, notification, and keeping the screen awake.
 import { nativeAwake, isNative } from './native.js';
+import { sendUpdate } from './notify.js';
 let ctx = null, lock = null;
 
 /** Call from a tap so iPhone allows sound later. */
@@ -21,7 +22,7 @@ export function alarm(label) {
     }
   } catch {}
   try { navigator.vibrate?.([300, 150, 300, 150, 300]); } catch {}
-  try { if ('Notification' in window && Notification.permission === 'granted') new Notification('⏰ Timer done', { body: label, tag: label }); } catch {}
+  if (!isNative()) sendUpdate('⏰ Timer done', label, 'wfd-timer-' + label);   // phone + watch (the native app schedules its own)
 }
 
 /** Keep the screen on while timers run (cook day). */
