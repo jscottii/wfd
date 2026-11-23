@@ -35,4 +35,6 @@ jobs:
       - run: npm run build:native && npx cap sync ios
       - name: Add the Live Activity widget
         run: (gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document) && ruby scripts/add-live-activity.rb
-      - run: xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*deprecated|BUILD (SUCCEEDED|FAILED)|\*\* " | tail -60; exit ${PIPESTATUS[0]}
+      - name: Build for the simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E "error:|warning: .*deprecated|BUILD (SUCCEEDED|FAILED)|\*\* " | tail -60; exit ${PIPESTATUS[0]}
