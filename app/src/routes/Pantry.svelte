@@ -132,4 +132,5 @@
     </div>
   {/each}
   {#if app.pantry.length}<p class="small muted">Tap an item to change its amount, where it lives, or its use-by date. {relative ? 'Low or Out puts it back on the shopping list.' : 'Fill in how much you have — for a can, jar or bag, also its size. Set it to 0, or tap + List, to put it on the shopping list.'} Change how amounts work in More → Settings.</p>{/if}
+  {#if app.pantry.length > 6}<AdSlot slot="pantry-bottom" format="rect" />{/if}
 </div>

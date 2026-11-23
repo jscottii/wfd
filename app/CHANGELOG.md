@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.5.2 — Nov 23, 2026
+- Up to 3 ads per screen: the pinned bar, one near the top, and one at the bottom of Plan, Shop, Pantry and Prep. Saved recipes has two in the list. Still none between cooking steps.
+
 ## 1.5.1 — Nov 23, 2026
 - What's new now also shows for people who were already using WFD before it existed.
 

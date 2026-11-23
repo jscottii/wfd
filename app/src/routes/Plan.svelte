@@ -334,6 +334,7 @@
     </div>
   </div>
   {/if}
+  <AdSlot slot="plan-bottom" format="rect" />
 </div>
 
 <style>

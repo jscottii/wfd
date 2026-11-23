@@ -659,4 +659,5 @@
     {/if}
     {/if}
   {/if}
+  {#if recipes.length && !focus}<AdSlot slot="prep-bottom" format="rect" />{/if}
 </div>

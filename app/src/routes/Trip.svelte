@@ -179,4 +179,5 @@
     </div>
   {/if}
   {/if}
+  <AdSlot slot="shop-bottom" format="rect" />
 </div>
