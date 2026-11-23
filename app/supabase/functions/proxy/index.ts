@@ -7,6 +7,7 @@
 //   instacart-list {title, items:[{name, quantity, unit, display}]}  an Instacart shopping-list page (pick Costco, Safeway, … there)
 //   serp-walmart-cart {items:[{name,count}]}  Walmart add-to-cart link (one SerpApi search per item)
 //   instacart-retailers {postal_code}  Instacart stores near a ZIP
+//   vision-pantry {image: base64 jpeg}  list the food in a photo of a shelf or fridge (needs ANTHROPIC_API_KEY)
 //   delete-account {confirm:'DELETE'}  delete your sign-in; the household's data too if you're its last member
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -37,7 +38,33 @@ Deno.serve(async (req) => {
       // which shared services the app can use (never returns the keys themselves)
       const { data: sec } = await admin.from('household_secrets').select('serpapi_key, instacart_key').eq('household_id', hid).maybeSingle();
       return json({ instacart: !!(sec?.instacart_key || Deno.env.get('INSTACART_API_KEY')), serp: !!sec?.serpapi_key, walmart: !!(sec?.serpapi_key || Deno.env.get('SERPAPI_KEY')),
-        stripe: !!Deno.env.get('STRIPE_SECRET_KEY') });
+        stripe: !!Deno.env.get('STRIPE_SECRET_KEY'), vision: !!Deno.env.get('ANTHROPIC_API_KEY') });
+    }
+
+    if (body.action === 'vision-pantry') {
+      const key = Deno.env.get('ANTHROPIC_API_KEY');
+      if (!key) return json({ error: 'Photo recognition isn’t switched on yet — scan barcodes instead.' }, 400);
+      const image = String(body.image || '');
+      if (!image || image.length > 7_000_000) return json({ error: 'That photo is too big — try again.' }, 400);
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: Deno.env.get('VISION_MODEL') || 'claude-haiku-5-5', max_tokens: 1200,
+          messages: [{ role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } },
+            { type: 'text', text: 'This is a photo of someone\'s pantry shelf, fridge or freezer. List each distinct food or cooking ingredient you can clearly see, as a grocery item name (e.g. "Black beans", "Whole milk", "Chicken thighs"). Count packages when you can. Skip anything you cannot identify, and non-food items. Reply with ONLY JSON: {"items":[{"name":"...","amount":2,"unit":"can"}]} (amount and unit optional).' },
+          ] }],
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return json({ error: 'Photo recognition is busy — try again in a moment.' }, 502);
+      const text = (j.content || []).map((c: any) => c.text || '').join('');
+      let items: any[] = [];
+      try { items = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)).items || []; } catch { items = []; }
+      items = items.filter((x) => x && typeof x.name === 'string' && x.name.trim()).slice(0, 40)
+        .map((x) => ({ name: x.name.trim().slice(0, 60), amount: Number(x.amount) || null, unit: typeof x.unit === 'string' ? x.unit.slice(0, 20) : '' }));
+      return json({ items });
     }
 
     if (body.action === 'instacart-list') {

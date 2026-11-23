@@ -89,3 +89,25 @@ export async function findIdeas({ cuisines = [], types = [], search = '' }) {
 }
 const shape = (m) => ({ id: m.idMeal, title: m.strMeal, thumb: m.strMealThumb, area: m.strArea || '' });
 export async function mealDetail(id) { const m = (await get(`/lookup.php?i=${id}`)).meals?.[0]; if (!m) throw new Error('That recipe is gone.'); return m; }
+
+/** New recipes built around pantry items: TheMealDB can filter by one ingredient at a time, so ask once per item
+ *  (trying "chicken_breast", then just "chicken") and rank meals by how many of the chosen items they use. */
+export async function findByIngredients(names) {
+  const tries = (n) => {
+    const w = String(n).toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z ]+/g, ' ').split(/\s+/).filter((x) => x.length > 2 && !/^(fresh|frozen|canned|large|small|boneless|skinless|organic|whole|dried|ground|can|jar|bag|box|pack)$/.test(x));
+    const out = [];
+    if (w.length >= 2) out.push(w.slice(-2).join('_'));
+    if (w.length) out.push(w[w.length - 1].replace(/(ies)$/, 'y').replace(/(oes|ses)$/, (m) => m.slice(0, -2)).replace(/([^s])s$/, '$1'));
+    return [...new Set(out)];
+  };
+  const hits = new Map();
+  await Promise.all(names.map(async (n) => {
+    for (const q of tries(n)) {
+      const meals = (await get(`/filter.php?i=${encodeURIComponent(q)}`).catch(() => ({}))).meals || [];
+      if (!meals.length) continue;
+      meals.forEach((m) => { const h = hits.get(m.idMeal) || { ...shape(m), uses: [] }; if (!h.uses.includes(n)) h.uses.push(n); hits.set(m.idMeal, h); });
+      break;
+    }
+  }));
+  return [...hits.values()].sort((a, b) => b.uses.length - a.uses.length || Math.random() - 0.5);
+}

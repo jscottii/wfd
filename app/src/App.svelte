@@ -20,9 +20,10 @@
   import More from './routes/More.svelte';
   import TimerDock from './components/TimerDock.svelte';
   import Onboarding from './components/Onboarding.svelte';
+  import { needsName } from './lib/hhname.js';
   import Admin from './routes/Admin.svelte';
   let showOnboard = $state(false), onboardDismissed = $state(false);
-  $effect(() => { if (app.ready && app.household && app.session && (!app.settings.onboarded || !app.settings.homeSet) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
+  $effect(() => { if (app.ready && app.household && app.session && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
 
   const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['more', '☰', 'More']];
   const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices', 'admin'];

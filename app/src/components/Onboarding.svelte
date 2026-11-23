@@ -1,5 +1,6 @@
 <script>
-  import { app, saveSettings, importRecipes, addLocalStores, track } from '../lib/db.svelte.js';
+  import { app, saveSettings, importRecipes, addLocalStores, track, renameHousehold, currentHousehold } from '../lib/db.svelte.js';
+  import { needsName } from '../lib/hhname.js';
   import { hereAddress, findLocalChains, geocode } from '../lib/maps.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -7,7 +8,7 @@
   // First run (or anyone who hasn't done it): pick favorite cuisines → 15 starter meals in Saved recipes.
   let { go, onclose } = $props();
   // where home is comes first (trips start and end there, and it decides which stores are nearby)
-  let step = $state(!app.settings.homeSet ? 'home' : 'pick'), liked = $state([...(app.settings.cuisines || [])]), prog = $state(0), err = $state(''), made = $state([]);
+  let step = $state(needsName(app, currentHousehold()) ? 'name' : !app.settings.homeSet ? 'home' : 'pick'), liked = $state([...(app.settings.cuisines || [])]), prog = $state(0), err = $state(''), made = $state([]);
   const TOTAL = 15;
   const toggle = (c) => (liked = liked.includes(c) ? liked.filter((x) => x !== c) : [...liked, c]);
 
@@ -58,13 +59,32 @@
       if (app.settings.onboarded || homeNote) { homeBusy = ''; step = 'homedone'; } else { homeBusy = ''; step = 'pick'; }
     } catch (e) { err = 'We couldn’t find that address or its town — check the city and ZIP.'; homeBusy = ''; }
   }
+  // name the household first, so invites and the household switcher say whose kitchen it is
+  let hhName = $state(''), nameBusy = $state(false);
+  const afterName = () => (step = !app.settings.homeSet ? 'home' : app.settings.onboarded ? 'close' : 'pick');
+  async function saveName() {
+    nameBusy = true; err = '';
+    try { await renameHousehold(hhName); await saveSettings({ hhNamed: true }); track('household_named'); afterName(); }
+    catch (e) { err = e.message; }
+    nameBusy = false;
+  }
+  async function skipName() { await saveSettings({ hhNamed: true }).catch(() => {}); afterName(); }
   $effect(() => { if (step === 'close') onclose(); });
   async function skip() { await saveSettings({ onboarded: true, onboardSkipped: true }).catch(() => {}); onclose(); }
 </script>
 
 <div class="modal-back" role="presentation">
   <div class="modal card nocollapse onboard">
-    {#if step === 'home'}
+    {#if step === 'name'}
+      <h2 style="margin-top:0">Name your household</h2>
+      <p class="small muted" style="margin-top:0">It's what people see when you invite them to plan and shop with you. You can change it later in More → Settings.</p>
+      {#if err}<div class="err small">⚠️ {err}</div>{/if}
+      <input bind:value={hhName} placeholder="e.g. The Scott House" maxlength="40" onkeydown={(e) => e.key === 'Enter' && hhName.trim() && saveName()} />
+      <div class="row" style="margin-top:12px">
+        <button onclick={saveName} disabled={!hhName.trim() || nameBusy}>{#if nameBusy}<span class="spinner"></span>{/if} Save name</button>
+        <button class="quiet" onclick={skipName}>Skip</button>
+      </div>
+    {:else if step === 'home'}
       <h2 style="margin-top:0">Where's home?</h2>
       <p class="small muted" style="margin-top:0">Shopping trips start and end here, and we'll find the grocery stores near you. Only your household sees it.</p>
       {#if err}<div class="err small">⚠️ {err}</div>{/if}

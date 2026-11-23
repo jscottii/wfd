@@ -1,7 +1,7 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
   import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
-  import { CUISINES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
+  import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
   import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
   import Dish from '../components/Dish.svelte';
@@ -66,7 +66,39 @@
 
   // recipes ranked by what's already in the pantry
   const priceOf = (id) => { const row = app.prices[id] || {}; const v = Object.values(row).map((e) => e?.price).filter((x) => x > 0); return v.length ? Math.min(...v) : 0; };
-  let fromPantry = $derived(app.pantry.length ? rankByPantry(app.recipes, app.pantry, app.items, priceOf).slice(0, 8) : []);
+  // Cook from the pantry: pick the items you want to use up; recipes are ranked by how many of them they use.
+  let onHand = $derived(app.pantry.filter((p) => !['low', 'out'].includes(p.level)));
+  // how many saved recipes each pantry item could anchor
+  let mealsFor = $derived(Object.fromEntries(onHand.map((p) => [p.id, app.recipes.filter((r) => rankByPantry([r], [p], app.items, priceOf)[0].got.length).length])));
+  let pickedP = $state(null);   // null = not chosen yet → defaults to the use-soon items
+  let chosen = $derived(pickedP ?? onHand.filter((p) => { const d = daysLeft(p.use_by); return d != null && d <= 3; }).map((p) => p.id));
+  let chosenRows = $derived(onHand.filter((p) => chosen.includes(p.id)));
+  const pickP = (id) => (pickedP = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
+  let pantryOrder = $derived([...onHand].sort((a, b) => (mealsFor[b.id] || 0) - (mealsFor[a.id] || 0) || (daysLeft(a.use_by) ?? 99) - (daysLeft(b.use_by) ?? 99)));
+  let fromPantry = $derived(!app.pantry.length ? [] : chosenRows.length
+    ? rankByPantry(app.recipes, chosenRows, app.items, priceOf).filter((x) => x.got.length).sort((a, b) => b.got.length - a.got.length || b.share - a.share).slice(0, 8)
+    : rankByPantry(app.recipes, app.pantry, app.items, priceOf).slice(0, 8));
+  let ideas = $state([]), ideasBusy = $state(''), ideasFor = $state('');
+  async function findPantryIdeas() {
+    ideasBusy = 'find'; ideas = [];
+    try {
+      const have = new Set(app.recipes.map((r) => r.title.toLowerCase()));
+      ideas = (await findByIngredients(chosenRows.map((p) => p.name))).filter((m) => !have.has(m.title.toLowerCase())).slice(0, 10);
+      ideasFor = chosenRows.map((p) => p.name).join(',');
+      if (!ideas.length) toast('No new recipes found for those — try fewer or different items.');
+      track('pantry_ideas', { items: chosenRows.length, found: ideas.length });
+    } catch (e) { toast(e.message); }
+    ideasBusy = '';
+  }
+  async function addIdea(m) {
+    ideasBusy = m.id;
+    try {
+      const [r] = await importRecipes([fromMealDb(await mealDetail(m.id))], 'mdb');
+      ideas = ideas.filter((x) => x.id !== m.id);
+      if (r) { sel[r.id] = true; toast(`✓ Saved ${r.title} and added it to this week`); }
+    } catch (e) { toast(e.message); }
+    ideasBusy = '';
+  }
   let useSoon = $derived(app.pantry.filter((p) => { const d = daysLeft(p.use_by); return d != null && d <= 3; }));
   let showPantry = $state(true);
 
@@ -119,7 +151,7 @@
       }
       topping = '';
       const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
-      const pantryIds = new Set(app.pantry.filter((p) => p.item_id && !['low', 'out'].includes(p.level)).map((p) => p.item_id));
+      const pantryIds = new Set((usePantry && chosenRows.length ? chosenRows : onHand).filter((p) => p.item_id).map((p) => p.item_id));
       const r = pickMix({ recipes: pool, need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry });
       sel = Object.fromEntries(r.ids.map((id) => [id, true]));
       days = autoFill(picked, household); manual = false;
@@ -199,10 +231,30 @@
       <button class:ghost={how !== 'auto'} onclick={pickForMe}>✨ Pick for me</button>
     </div>
 
+    {#if usePantry && onHand.length}
+      <div class="pan-pick">
+        <p class="small" style="margin:0 0 4px"><b>What do you want to use?</b> <span class="muted">The number is how many of your saved recipes each one goes in.</span></p>
+        {#each pantryOrder as p (p.id)}{@const d = daysLeft(p.use_by)}
+          <button class="chip" class:on={chosen.includes(p.id)} onclick={() => { pickP(p.id); if (how === 'auto') pickForMe(); }}>{chosen.includes(p.id) ? '✓ ' : ''}{p.name}{#if mealsFor[p.id]} <span class="cnt">{mealsFor[p.id]}</span>{/if}{#if d != null && d <= 3} <span class="soon">use soon</span>{/if}</button>
+        {/each}
+        <div class="row" style="margin-top:6px;gap:6px">
+          <button class="ghost" onclick={findPantryIdeas} disabled={!chosenRows.length || ideasBusy === 'find'}>{#if ideasBusy === 'find'}<span class="spinner"></span>{/if} 🔎 New recipes using {chosenRows.length === 1 ? chosenRows[0].name : `these ${chosenRows.length || ''}`.trim()}</button>
+          {#if chosen.length}<button class="quiet" onclick={() => (pickedP = [])}>Clear</button>{/if}
+        </div>
+        {#if ideas.length && ideasFor === chosenRows.map((p) => p.name).join(',')}
+          <p class="small muted" style="margin:8px 0 4px">New ideas — tap + to save one and put it in this week</p>
+          {#each ideas as m (m.id)}
+            <div class="list-row" style="gap:8px">{#if m.thumb}<img src={m.thumb + '/preview'} alt="" width="40" height="40" style="border-radius:8px;object-fit:cover" />{/if}
+              <div class="grow"><b class="small">{m.title}</b><div class="small muted">Uses {m.uses.join(', ')}</div></div>
+              <button onclick={() => addIdea(m)} disabled={!!ideasBusy} aria-label="Save {m.title}">{#if ideasBusy === m.id}<span class="spinner"></span>{:else}+{/if}</button></div>
+          {/each}
+        {/if}
+      </div>
+    {/if}
     {#if usePantry && how === 'mine' && fromPantry.length}
-      <p class="small muted" style="margin:10px 0 4px">Uses what you have{useSoon.length ? ` — use soon: ${useSoon.map((p) => p.name).join(', ')}` : ''}</p>
+      <p class="small muted" style="margin:10px 0 4px">{chosenRows.length ? `Your saved recipes with ${chosenRows.map((p) => p.name).join(', ')}` : 'Uses what you have'}{!chosenRows.length && useSoon.length ? ` — use soon: ${useSoon.map((p) => p.name).join(', ')}` : ''}</p>
       {#each fromPantry.slice(0, 5) as x}
-        <div class="list-row"><div class="grow"><b class="small">{x.r.title}</b> <span class="pill" class:live={x.share >= 0.5}>{Math.round(x.share * 100)}% on hand</span>{#if x.need.length}<div class="small muted">Buy: {x.need.slice(0, 4).join(', ')}{x.need.length > 4 ? ` +${x.need.length - 4}` : ''}</div>{/if}</div>
+        <div class="list-row"><div class="grow"><b class="small">{x.r.title}</b> <span class="pill" class:live={x.share >= 0.5}>{chosenRows.length ? `uses ${x.got.length} of ${chosenRows.length}` : `${Math.round(x.share * 100)}% on hand`}</span>{#if x.need.length}<div class="small muted">Buy: {x.need.slice(0, 4).join(', ')}{x.need.length > 4 ? ` +${x.need.length - 4}` : ''}</div>{/if}</div>
           <button class={sel[x.r.id] ? 'ghost' : ''} onclick={() => toggle(x.r.id)}>{sel[x.r.id] ? '✓' : 'Add'}</button></div>
       {/each}
     {/if}
@@ -283,3 +335,9 @@
   {/if}
   <AdSlot slot="plan" format="banner" />
 </div>
+
+<style>
+  .pan-pick { margin: 10px 0; padding: 10px; border-radius: 12px; background: var(--accent-soft); }
+  .pan-pick .cnt { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+  .pan-pick .soon { font-size: 10px; color: #b45309; font-weight: 700; }
+</style>

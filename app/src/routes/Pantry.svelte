@@ -1,5 +1,7 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
+  import PantryScan from '../components/PantryScan.svelte';
+  let scanning = $state(false);
   import { app, addPantry, updatePantry, removePantry, toast } from '../lib/db.svelte.js';
   import { parseAdd, daysLeft, covers, placeFor, useByFor } from '../lib/pantry.js';
   import { showAmount, splitContainer, joinContainer, UNIT_CHOICES, CONTAINERS, SIZE_UNITS } from '../lib/units.js';
@@ -46,6 +48,8 @@
 
 <div class="page wide">
   <div class="spread"><h1>Pantry</h1><button class="quiet" onclick={() => go('plan')}>Plan from it →</button></div>
+  <button class="ghost" style="width:100%;margin-bottom:8px" onclick={() => (scanning = true)}>📷 Add with the camera — scan barcodes or snap the fridge</button>
+  {#if scanning}<PantryScan onclose={() => (scanning = false)} />{/if}
   <p class="muted small">What you already have. Trips skip it, and the Plan tab suggests recipes that use it up. Things you check off on a trip or a receipt are added for you.</p>
   {#if err}<div class="err">⚠️ {err}</div>{/if}
 

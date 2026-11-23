@@ -5,6 +5,11 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.4.0 — Nov 23, 2026
+- Pantry → 📷 Add with the camera: scan barcodes one after another (product names looked up automatically; scan twice to count 2), check the list, then add. A "photo of a shelf or fridge" option turns on once photo recognition is set up on the server.
+- Plan → Cook from your pantry: pick which pantry items to use (use-soon items picked for you). Each item shows how many of your saved recipes it goes in; saved recipes rank by how many of your picks they use; "New recipes using these" finds fresh ideas that use them, and + saves one straight into this week. Pick for me favors your picks too.
+- New accounts are asked to name their household first (shown on invites and the household switcher).
+
 ## 1.3.0 — Nov 23, 2026
 - Full-screen cooking: big step text and buttons, progress bar, "up next", swipe or ← → keys (Enter = Done → Next, Esc = exit); works on phone, iPad and desktop; timers stay visible.
 - Phone & watch updates: a notification each time you finish a step (and when timers go off) — shows on Apple Watch when the iPhone is locked.
