@@ -99,6 +99,23 @@ export async function deleteAccount() {
 }
 export async function signOut() { await sb.auth.signOut(); location.reload(); }
 
+/* ---------------- guests ---------------- */
+/** Try WFD without an account: a private, throwaway sign-in for this browser only. Every guest gets their own household. */
+export async function continueAsGuest() {
+  const { error } = await sb.auth.signInAnonymously();
+  if (error) throw new Error(/anonymous/i.test(error.message) ? 'Guest mode is turned off right now. Please create an account.' : error.message);
+}
+export const isGuest = () => !!app.user?.is_anonymous;
+/** Turn this guest into a real account (same household, nothing lost). */
+export async function saveGuestAccount(email, password) {
+  const { data, error } = await sb.auth.updateUser({ email: email.trim(), password });
+  if (error) throw new Error(/already|exists|registered/i.test(error.message) ? 'That email already has an account. Sign out of guest mode and sign in instead (your guest meals won\'t come with you).' : error.message);
+  try { localStorage.setItem('mp-email', email.trim()); } catch {}
+  const { data: s } = await sb.auth.refreshSession();
+  app.session = s.session || app.session; app.user = s.session?.user || data.user || app.user;
+  track('guest_saved');
+}
+
 /** A new "usually feeding" number flows through: this week's plan, upcoming weeks, and so recipe scaling and the shopping list. */
 export async function setHouseholdSize(n) {
   n = Math.max(1, Number(n) || 1);

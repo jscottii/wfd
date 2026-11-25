@@ -1,6 +1,6 @@
 <script>
   import InstallApp from '../components/InstallApp.svelte';
-  import { app, saveSettings, saveSerpKey, testSerpKey, saveInstacartKey, MAX_HOUSEHOLDS, switchHousehold, createHousehold, acceptInvite, declineInvite, leaveHousehold, renameHousehold, currentHousehold, getJoinCode, resetJoinCode, peekCode, joinWithCode, showCode, inviteLink, invite, signOut, deleteAccount, saveStore, addLocalStores, setHouseholdSize, toast } from '../lib/db.svelte.js';
+  import { app, saveSettings, saveSerpKey, testSerpKey, saveInstacartKey, MAX_HOUSEHOLDS, switchHousehold, createHousehold, acceptInvite, declineInvite, leaveHousehold, renameHousehold, currentHousehold, getJoinCode, resetJoinCode, peekCode, joinWithCode, showCode, inviteLink, invite, signOut, deleteAccount, isGuest, saveStore, addLocalStores, setHouseholdSize, toast } from '../lib/db.svelte.js';
   import { findLocalChains } from '../lib/maps.js';
   import { ui } from '../lib/ui.svelte.js';
   import MealPrefs from '../components/MealPrefs.svelte';
@@ -268,7 +268,12 @@
         <button disabled={atMax() || !newHh.trim() || !!hhBusy} onclick={() => hh('new', () => createHousehold(newHh))}>{#if hhBusy === 'new'}<span class="spinner"></span>{/if} Create</button></div>
       <p class="small muted">{atMax() ? `You're in ${MAX_HOUSEHOLDS} households, the most allowed.` : 'Each household has its own recipes, plans, pantry, stores and prices. Switching changes what the whole app shows.'}</p>
       {#if hhErr}<div class="err">⚠️ {hhErr}</div>{/if}
-      <button class="ghost" style="margin-top:10px" onclick={signOut}>Sign out</button>
+      {#if isGuest()}
+        <p class="small muted" style="margin-top:10px">You're using WFD as a guest. Leaving guest mode deletes this plan, your recipes and lists for good. To keep them, use <b>Save my meals</b> at the top of the page first.</p>
+        <button class="ghost" style="margin-top:4px" onclick={() => { if (confirm('Leave guest mode? Your guest meals can\'t be brought back.')) signOut(); }}>Leave guest mode</button>
+      {:else}
+        <button class="ghost" style="margin-top:10px" onclick={signOut}>Sign out</button>
+      {/if}
     </div>
     <div class="card">
       <h3>Delete my account</h3>

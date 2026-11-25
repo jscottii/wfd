@@ -10,6 +10,7 @@
   let joinBusy = $state(false), joinErr = $state('');
   async function doJoin() { joinBusy = true; joinErr = ''; try { await joinWithCode(app.pendingJoin.code); } catch (e) { joinErr = e.message; joinBusy = false; } }
   import Login from './routes/Login.svelte';
+  import GuestBar from './components/GuestBar.svelte';
   import Trip from './routes/Trip.svelte';
   import Plan from './routes/Plan.svelte';
   import Prep from './routes/Prep.svelte';
@@ -65,6 +66,7 @@
   </div>
 {:else}
   <TimerDock />
+  <GuestBar />
   {#if app.households.length || app.myInvites.length}
     <div class="hhbar">
       {#if app.households.length}<button class="quiet" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}

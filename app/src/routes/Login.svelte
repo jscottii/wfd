@@ -1,5 +1,5 @@
 <script>
-  import { signIn, signUp, sendResetCode, resetWithCode, pendingCode, showCode, cleanCode } from '../lib/db.svelte.js';
+  import { signIn, signUp, continueAsGuest, sendResetCode, resetWithCode, pendingCode, showCode, cleanCode } from '../lib/db.svelte.js';
   const joining = pendingCode();
   let mode = $state(pendingCode() ? 'up' : 'in'), email = $state(localStorage.getItem('mp-email') || ''), password = $state(''), busy = $state(false), err = $state('');
   let code = $state(''), sent = $state(false), info = $state('');
@@ -10,6 +10,10 @@
     busy = true;
     try { localStorage.setItem('mp-email', email.trim()); await (mode === 'in' ? signIn : signUp)(email, password); }
     catch (x) { err = x.message; busy = false; }
+  }
+  async function guest() {
+    err = ''; busy = true;
+    try { await continueAsGuest(); } catch (x) { err = x.message; busy = false; }
   }
   async function send(e) {
     e?.preventDefault(); err = ''; busy = true;
@@ -54,6 +58,7 @@
       <button class:on={mode === 'in'} onclick={() => setMode('in')}>Sign in</button>
       <button class:on={mode === 'up'} onclick={() => setMode('up')}>Create account</button>
     </div>
+
     <form class="card" onsubmit={go}>
       <label class="f">Email<input type="email" required autocomplete="email" bind:value={email} placeholder="you@example.com" /></label>
       <label class="f">Password<input type="password" required autocomplete={mode === 'in' ? 'current-password' : 'new-password'} bind:value={password} /></label>
@@ -62,5 +67,15 @@
     </form>
     {#if mode === 'in'}<button class="quiet" onclick={() => setMode('reset')}>Forgot password?</button>{/if}
     <p class="small muted">{mode === 'up' ? 'Invited by someone in your household? Use the email they invited and you\'ll join their household.' : 'You stay signed in on this device.'}</p>
+    {#if !joining}
+      <div class="guest">
+        <button class="ghost" style="width:100%" onclick={guest} disabled={busy}>Continue without an account</button>
+        <p class="small muted" style="margin:6px 0 0">Try everything right away. Without an account your meals <b>aren't saved</b>: they stay only in this browser, and they're gone if you sign out, clear your browser data, or switch devices. You can create an account any time to keep them.</p>
+      </div>
+    {/if}
   {/if}
 </div>
+
+<style>
+  .guest { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+</style>
