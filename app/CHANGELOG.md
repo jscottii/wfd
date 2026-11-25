@@ -5,6 +5,12 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.10.0 — Nov 24, 2026
+- Find new hides recipes that don't fit your diets or allergies (with a "show them" link), and every result shows its calories, protein and diet badges.
+- Correct a recipe's nutrition: when editing a recipe, type your own calories, protein, carbs and fat per serving (blank = keep the estimate). Servings were already editable there.
+- Week at a glance: the Plan shows average calories, protein, carbs and fat per person per day for the meals you've placed, and how many meals miss your goals.
+- Protein goal: alongside the calorie goal, set a minimum protein per meal. Pick for me only chooses (and finds) main meals that meet both.
+
 ## 1.9.0 — Nov 24, 2026
 - Tap your household's name at the top to switch households or start a new one, without going into Settings. The name now shows even if you're in just one household.
 

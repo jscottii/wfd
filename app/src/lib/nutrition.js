@@ -268,6 +268,13 @@ const cache = new WeakMap();
  */
 export function nutritionOf(r) {
   if (!r) return null;
+  // corrected by hand: the numbers as typed (any left blank are filled from the estimate)
+  const fix = r.nutrition;
+  if (fix && ['kcal', 'protein', 'carbs', 'fat'].some((k) => Number(fix[k]) > 0)) {
+    const est = nutritionOf({ ...r, nutrition: null }) || {};
+    const v = (k) => (Number(fix[k]) > 0 ? Math.round(Number(fix[k])) : est[k] || 0);
+    return { kcal: v('kcal'), protein: v('protein'), carbs: v('carbs'), fat: v('fat'), known: est.known, total: est.total, ok: true, manual: true };
+  }
   if (typeof r === 'object' && cache.has(r) && cache.get(r).key === (r.ing || []).join('|') + r.servings) return cache.get(r).v;
   // "Rub: 2 tsp salt, 1 Tbsp brown sugar" / "1 fennel bulb + 1 apple" → one entry each
   const ing = (r.ing || []).filter((x) => x && !/:\s*$/.test(String(x).trim()))
@@ -289,4 +296,4 @@ export function nutritionOf(r) {
   return v;
 }
 /** Calories for a recipe: the source's own number when it gave one, else the estimate. */
-export const caloriesOf = (r) => Number(r?.calories) || (nutritionOf(r)?.ok ? nutritionOf(r).kcal : 0);
+export const caloriesOf = (r) => (nutritionOf(r)?.manual ? nutritionOf(r).kcal : Number(r?.calories) || (nutritionOf(r)?.ok ? nutritionOf(r).kcal : 0));

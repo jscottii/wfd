@@ -44,7 +44,9 @@
   function setMealCount(n) { reshape({ meals: DEFAULT_MEALS[n] }); }
   function toggleMeal(m) { const has = shape.meals.includes(m); if (has && shape.meals.length === 1) return; reshape({ meals: has ? shape.meals.filter((x) => x !== m) : ['breakfast', 'lunch', 'dinner'].filter((x) => x === m || shape.meals.includes(x)) }); }
   const D3 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  let goalOn = $state(!!app.settings.calorieGoal), goal = $state(app.settings.calorieGoal || 600);
+  let goalOn = $state(!!app.settings.calorieGoal || !!app.settings.proteinGoal), goal = $state(app.settings.calorieGoal || 600), pGoal = $state(app.settings.proteinGoal || '');
+  // does a main meal meet the goals? (unknown nutrition counts as meeting them, so it isn't left out)
+  const meetsGoals = (r) => { if (!goalOn) return true; const n = nutritionOf(r); if (!n?.ok) return true; return (!+goal || n.kcal <= +goal * 1.15) && (!+pGoal || n.protein >= +pGoal); };
   const cal = (r) => caloriesOf(r);
 
   // working copy of the plan
@@ -135,6 +137,7 @@
       if (kindFor === 'main' && /dessert|side|starter|breakfast/i.test(m.strCategory)) continue;
       const parsed = fromMealDb(m);
       if (clash({ title: m.strMeal, ing: parsed.recipes[0].ing }).any) continue;
+      if (kindFor === 'main' && !meetsGoals({ ing: parsed.recipes[0].ing, servings: parsed.recipes[0].servings || 4 })) continue;
       const [r] = await importRecipes([parsed], 'mdb'); out.push(r);
     }
     return out;
@@ -143,8 +146,9 @@
   async function pickForMe() {
     how = 'auto'; track('pick_for_me', { cuisines: autoCuisines.length }); err = '';
     try {
-      const ok = (x) => !clash(x).any && inCuisines(x, autoCuisines);
+      const ok = (x) => !clash(x).any && inCuisines(x, autoCuisines) && (kind(x) !== 'main' || meetsGoals(x));
       let pool = app.recipes.filter((x) => ok(x) || (kind(x) !== 'main' && !clash(x).any));
+      if (goalOn && pool.filter((x) => kind(x) === 'main').length < 2) toast('Few saved recipes meet your goals — finding new ones that do');
       for (const k of ['main', 'breakfast']) {
         if (!needN[k]) continue;
         kindFor = k;
@@ -160,6 +164,25 @@
       mixInfo = r;
     } catch (e) { err = e.message; topping = ''; }
   }
+  // the week at a glance: average per day for one person, from the meals placed in the grid
+  let weekN = $derived.by(() => {
+    const ds = days.slice(shape.from, shape.to + 1), slots = [...shape.meals, ...(shape.snack ? ['snack'] : [])];
+    let kcal = 0, protein = 0, carbs = 0, fat = 0, counted = 0, missing = 0, offGoal = 0, withFood = 0;
+    for (const d of ds) {
+      let any = false;
+      for (const m of slots) {
+        const r = d[m] ? recipeById(d[m]) : null; if (!r) continue;
+        any = true; const n = nutritionOf(r);
+        if (!n?.ok) { missing++; continue; }
+        kcal += n.kcal; protein += n.protein; carbs += n.carbs; fat += n.fat; counted++;
+        if (m !== 'snack' && m !== 'breakfast' && !meetsGoals(r)) offGoal++;
+      }
+      if (any) withFood++;
+    }
+    if (!counted || !withFood) return null;
+    const per = (x) => Math.round(x / withFood);
+    return { kcal: per(kcal), protein: per(protein), carbs: per(carbs), fat: per(fat), days: withFood, missing, offGoal };
+  });
   async function removePlan() {
     if (!confirm('Delete this week’s plan? Your saved recipes stay.')) return;
     saving = true; err = '';
@@ -212,11 +235,11 @@
       <button class="chip" class:on={shape.snack} onclick={() => reshape({ snack: !shape.snack })}>{shape.snack ? '✓ Snack' : '+ Add a snack'}</button>
     </div>
     {#if !app.settings.calorieAsked && !goalOn}
-      <p class="small" style="margin:6px 0">Want a calorie goal for each meal? <button class="quiet" onclick={() => (goalOn = true)}>Yes</button> <button class="quiet" onclick={() => saveSettings({ calorieAsked: true })}>No thanks</button></p>
+      <p class="small" style="margin:6px 0">Want calorie or protein goals for each meal? <button class="quiet" onclick={() => (goalOn = true)}>Yes</button> <button class="quiet" onclick={() => saveSettings({ calorieAsked: true })}>No thanks</button></p>
     {:else if goalOn}
-      <p class="sentence small" style="margin:6px 0">Aim for about <input class="inl" type="number" min="100" step="50" bind:value={goal} style="width:4.5em" onchange={() => saveSettings({ calorieGoal: +goal || null, calorieAsked: true })} /> calories per meal.
-        <button class="quiet" onclick={() => { goalOn = false; saveSettings({ calorieGoal: null, calorieAsked: true }); }}>Remove</button></p>
-      {#if picked.length}<p class="small muted" style="margin:0 0 6px">{picked.filter(cal).length ? picked.filter(cal).map((r) => `${short(r)}: ${cal(r)} cal ${cal(r) <= goal * 1.1 ? '✓' : '↑'}`).join(' · ') : 'Recipes you save from a link show their calories here when the site lists them.'}</p>{/if}
+      <p class="sentence small" style="margin:6px 0">Aim for about <input class="inl" type="number" min="100" step="50" bind:value={goal} style="width:4.5em" onchange={() => saveSettings({ calorieGoal: +goal || null, calorieAsked: true })} /> calories and at least <input class="inl" type="number" min="0" step="5" bind:value={pGoal} placeholder="—" style="width:3.5em" onchange={() => saveSettings({ proteinGoal: +pGoal || null, calorieAsked: true })} /> g protein per meal. <span class="muted">Pick for me sticks to these.</span>
+        <button class="quiet" onclick={() => { goalOn = false; pGoal = ''; saveSettings({ calorieGoal: null, proteinGoal: null, calorieAsked: true }); }}>Remove</button></p>
+      {#if picked.length}<p class="small muted" style="margin:0 0 6px">{picked.filter(cal).length ? picked.filter(cal).map((r) => `${short(r)}: ${cal(r)} cal${nutritionOf(r)?.ok ? `, ${nutritionOf(r).protein} g protein` : ''} ${meetsGoals(r) ? '✓' : '↑'}`).join(' · ') : 'Recipes you save from a link show their calories here when the site lists them.'}</p>{/if}
     {/if}
   </div>
 
@@ -310,6 +333,16 @@
           </div>
         {/each}
       </div>
+      {#if weekN}
+        <div class="wk-sum">
+          <b class="small">This week, per person per day</b> <span class="small muted">· {weekN.days} day{weekN.days === 1 ? '' : 's'} planned, estimated</span>
+          <div class="wk-row">
+            <span><b>{weekN.kcal}</b><small>cal</small></span><span><b>{weekN.protein} g</b><small>protein</small></span><span><b>{weekN.carbs} g</b><small>carbs</small></span><span><b>{weekN.fat} g</b><small>fat</small></span>
+          </div>
+          {#if weekN.missing}<p class="small muted" style="margin:4px 0 0">{weekN.missing} meal{weekN.missing === 1 ? '' : 's'} not counted (not enough to estimate).</p>{/if}
+          {#if goalOn && (+goal || +pGoal)}<p class="small muted" style="margin:4px 0 0">Your goals per meal: {+goal ? `~${goal} cal` : ''}{+goal && +pGoal ? ', ' : ''}{+pGoal ? `${pGoal} g+ protein` : ''} · {weekN.offGoal ? `${weekN.offGoal} meal${weekN.offGoal === 1 ? '' : 's'} over/under` : 'every meal fits ✓'}</p>{/if}
+        </div>
+      {/if}
       {#if manual}<button class="quiet" onclick={() => { days = autoFill(picked, household); manual = false; }}>↺ Spread them out for me again</button>{/if}
     </div>
     {#if slotPick}
@@ -341,6 +374,11 @@
 </div>
 
 <style>
+  .wk-sum { margin: 10px 0 4px; padding: 10px; border-radius: 12px; background: var(--accent-soft); }
+  .wk-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; text-align: center; }
+  .wk-row span { background: #fff; border-radius: 10px; padding: 6px 2px; display: flex; flex-direction: column; }
+  .wk-row b { font-size: 16px; }
+  .wk-row small { font-size: 11px; color: var(--muted); }
   .wday-tot { display: block; font-size: 10px; font-weight: 500; color: var(--muted); line-height: 1.25; margin-top: 4px; text-transform: none; }
   .wmac { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
   .pan-pick { margin: 10px 0; padding: 10px; border-radius: 12px; background: var(--accent-soft); }

@@ -4,6 +4,7 @@
   import { CUISINES, MEAL_TYPES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
   import { conflicts, conflictText, prefsOf } from '../lib/diet.js';
   import AdSlot from './AdSlot.svelte';
+  import MealFacts from './MealFacts.svelte';
   const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${conflictText(c)}` : ''; };
   // onadd(recipe) — called for each recipe added (e.g. to drop it into a week); onbm — open the Bare Minimum weeks
   let { onadd = null, onbm = null, onclose = null } = $props();
@@ -16,6 +17,20 @@
 
   const have = (title) => app.recipes.some((r) => r.title.toLowerCase() === String(title).toLowerCase());
 
+  // each shown idea's ingredients (fetched once, cached) → hide ones that clash with the household's diets/allergies
+  let details = $state({}), showAll = $state(false);
+  const prefs = $derived(prefsOf(app.settings));
+  const strict = $derived(prefs.diets.length + prefs.allergies.length + prefs.avoid.length > 0);
+  $effect(() => {
+    const want = ideas.slice(0, 36).filter((i) => !(i.id in untrack(() => details)));
+    if (!want.length) return;
+    let n = 0;
+    const next = async () => { while (n < want.length) { const i = want[n++]; try { const r = fromMealDb(await mealDetail(i.id)).recipes[0]; details[i.id] = { title: r.title, ing: r.ing, servings: r.servings || 4 }; } catch { details[i.id] = null; } } };
+    Promise.all([next(), next(), next(), next(), next(), next()]);   // six at a time
+  });
+  const clashes = (i) => details[i.id] && conflicts(details[i.id], prefs).any;
+  let shown = $derived(ideas.slice(0, 36).filter((i) => showAll || !strict || !clashes(i)).slice(0, 24));
+  let hidden = $derived(strict && !showAll ? ideas.slice(0, 36).filter(clashes).length : 0);
   // only the newest search gets to show its results; earlier ones that finish late are ignored
   let seq = 0, wait = 0, sitesBusy = $state(false);
   async function look() {
@@ -91,11 +106,13 @@
 
   {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking…</p>{:else if q.trim() && ideas.length}<p class="small muted" style="margin:8px 0 0">{ideas.length} recipe{ideas.length === 1 ? '' : 's'} for “{q.trim()}”</p>{/if}
   <div class="ideas">
-    {#each ideas.slice(0, 24) as i, n (i.id)}
+    {#if hidden}<p class="small muted" style="grid-column:1/-1;margin:0">Hiding {hidden} that don’t fit your diets or allergies · <button class="quiet" style="padding:0" onclick={() => (showAll = true)}>Show them</button></p>
+    {:else if showAll && strict}<p class="small muted" style="grid-column:1/-1;margin:0">Showing everything · <button class="quiet" style="padding:0" onclick={() => (showAll = false)}>Hide ones that don’t fit</button></p>{/if}
+    {#each shown as i, n (i.id)}
       {#if n === 4}<div style="grid-column:1/-1"><AdSlot slot="find-recipes" format="native" /></div>{/if}
       <div class="idea">
         <img src={i.thumb + '/preview'} alt="" loading="lazy" />
-        <div style="flex:1;min-width:0"><b class="small">{i.title}</b>{#if i.area}<div class="small muted">{i.area}</div>{/if}</div>
+        <div style="flex:1;min-width:0"><b class="small">{i.title}</b>{#if i.area}<div class="small muted">{i.area}</div>{/if}{#if details[i.id]}<MealFacts r={details[i.id]} compact />{/if}</div>
         {#if added[i.id] || have(i.title)}<span class="small muted">✓ Saved</span>
         {:else}<button class="ghost" style="padding:6px 10px" onclick={() => addIdea(i)} disabled={!!busy} aria-label="Save recipe">{#if busy === i.id}<span class="spinner"></span>{:else}+{/if}</button>{/if}
       </div>
@@ -110,7 +127,7 @@
       </div>
     {/each}
   </div>
-  {#if ideas.length > 12}<AdSlot slot="find-recipes-end" format="rect" />{/if}
+  {#if shown.length > 12}<AdSlot slot="find-recipes-end" format="rect" />{/if}
   <p class="small muted" style="margin-top:8px">Tap + to save a recipe to your Saved recipes, with its shopping items.</p>
 </div>
 

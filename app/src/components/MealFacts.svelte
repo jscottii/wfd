@@ -7,7 +7,7 @@
   let { r, compact = false } = $props();
   const n = $derived(nutritionOf(r));
   const c = $derived(conflicts(r, prefsOf(app.settings)));
-  const kcal = $derived(Number(r?.calories) || n?.kcal || 0);
+  const kcal = $derived(n?.manual ? n.kcal : Number(r?.calories) || n?.kcal || 0);
   const short = (a) => (a.length > 2 ? `${a.slice(0, 2).join(', ')}…` : a.join(', '));
 </script>
 
@@ -23,7 +23,7 @@
   <div class="mf">
     {#if n?.ok}
       {@const tot = n.protein * 4 + n.carbs * 4 + n.fat * 9 || 1}
-      <div class="mf-head"><b>{kcal} cal</b> <span class="small muted">per serving · estimated from the ingredients</span></div>
+      <div class="mf-head"><b>{kcal} cal</b> <span class="small muted">per serving · {n.manual ? 'your numbers' : 'estimated from the ingredients — Edit the recipe to correct'}</span></div>
       <div class="mf-bar" role="img" aria-label="Protein {n.protein} grams, carbs {n.carbs} grams, fat {n.fat} grams">
         <span style="width:{(n.protein * 400) / tot}%;background:#1f5fd1"></span><span style="width:{(n.carbs * 400) / tot}%;background:#f2a33a"></span><span style="width:{(n.fat * 900) / tot}%;background:#8a94a6"></span>
       </div>

@@ -3,6 +3,7 @@
   import AdSlot from '../components/AdSlot.svelte';
   import { conflicts, prefsOf } from '../lib/diet.js';
   import MealFacts from '../components/MealFacts.svelte';
+  import { nutritionOf } from '../lib/nutrition.js';
   const prefs = $derived(prefsOf(app.settings));
   import { app, portions, itemById, setRecipeActive, saveRecipe, deleteRecipe, importRecipeUrl, toast } from '../lib/db.svelte.js';
   import FindRecipes from '../components/FindRecipes.svelte';
@@ -14,13 +15,14 @@
   let { go } = $props();
   let adding = $state(false), link = $state(''), linkBusy = $state(false), linkErr = $state(''), finding = $state(false);
   async function fromLink(e) { e.preventDefault(); linkBusy = true; linkErr = ''; try { const [r] = await importRecipeUrl(link.trim()); link = ''; adding = false; open = r.id; toast(`✓ ${r.title} saved`); } catch (x) { linkErr = x.message; } linkBusy = false; }
+  let est = $derived(editing ? nutritionOf({ ing: editing.ingText.split('\n').filter(Boolean), servings: Number(editing.servings) || 4 }) : null);
   let open = $state(null), editing = $state(null), busy = $state(false), q = $state('');
   let por = $derived(portions());
   let list = $derived(app.recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase())).slice().sort((a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt))));
   const blank = () => ({ id: '', title: '', when: 'Lunch/Dinner', servings: 4, yield: '', fridge: '', freeze: '', ingText: '', stepsText: '', tip: '', items: [], newItems: [] });
 
   function edit(r) {
-    editing = r ? { ...r, ingText: r.ing.join('\n'), stepsText: r.steps.join('\n'), items: Object.entries(r.items).map(([id, u]) => ({ id, units: u })), newItems: [] } : blank();
+    editing = r ? { ...r, nkcal: r.nutrition?.kcal ?? '', nprotein: r.nutrition?.protein ?? '', ncarbs: r.nutrition?.carbs ?? '', nfat: r.nutrition?.fat ?? '', ingText: r.ing.join('\n'), stepsText: r.steps.join('\n'), items: Object.entries(r.items).map(([id, u]) => ({ id, units: u })), newItems: [] } : blank();
     open = null;
   }
   async function save() {
@@ -30,7 +32,8 @@
       const items = Object.fromEntries(e.items.filter((x) => x.id).map((x) => [x.id, Number(x.units) || 1]));
       const id = await saveRecipe({ id: e.id || '', title: e.title.trim(), when: e.when, servings: Number(e.servings) || null, yield: e.yield, fridge: e.fridge, freeze: e.freeze,
         ing: e.ingText.split('\n').map((s) => s.trim()).filter(Boolean), steps: e.stepsText.split('\n').map((s) => s.trim()).filter(Boolean), tip: e.tip,
-        custom: e.custom ?? true, active: e.active ?? true, source: e.source || '', items }, e.newItems.filter((n) => n.name.trim()));
+        custom: e.custom ?? true, active: e.active ?? true, source: e.source || '', items,
+        nutrition: ['nkcal', 'nprotein', 'ncarbs', 'nfat'].some((k) => Number(e[k]) > 0) ? { kcal: Number(e.nkcal) || null, protein: Number(e.nprotein) || null, carbs: Number(e.ncarbs) || null, fat: Number(e.nfat) || null } : null }, e.newItems.filter((n) => n.name.trim()));
       editing = null; open = id; toast('✓ Saved');
     } catch (err) { toast(err.message); }
     busy = false;
@@ -52,6 +55,13 @@
       <label class="f">Ingredients (one per line)<textarea bind:value={editing.ingText}></textarea></label>
       <label class="f">Steps (one per line)<textarea bind:value={editing.stepsText}></textarea></label>
       <label class="f">Tip<input bind:value={editing.tip} /></label>
+      <p class="small" style="margin:10px 0 2px"><b>Nutrition per serving</b> <span class="muted">— leave blank to use the estimate{est?.ok ? ` (${est.kcal} cal, ${est.protein} g protein, ${est.carbs} g carbs, ${est.fat} g fat)` : ''}</span></p>
+      <div class="grid4">
+        <label class="f">Calories<input type="number" min="0" inputmode="numeric" bind:value={editing.nkcal} placeholder={est?.ok ? String(est.kcal) : ''} /></label>
+        <label class="f">Protein (g)<input type="number" min="0" inputmode="numeric" bind:value={editing.nprotein} placeholder={est?.ok ? String(est.protein) : ''} /></label>
+        <label class="f">Carbs (g)<input type="number" min="0" inputmode="numeric" bind:value={editing.ncarbs} placeholder={est?.ok ? String(est.carbs) : ''} /></label>
+        <label class="f">Fat (g)<input type="number" min="0" inputmode="numeric" bind:value={editing.nfat} placeholder={est?.ok ? String(est.fat) : ''} /></label>
+      </div>
     </div>
     <div class="card">
       <h3>What to buy for it</h3>
@@ -117,3 +127,8 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  @media (max-width: 480px) { .grid4 { grid-template-columns: repeat(2, 1fr); } }
+</style>
