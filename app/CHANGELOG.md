@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.12.1 — Nov 24, 2026
+- Fix: recipes saved from the recipe finder no longer ask for hundreds of packages (gram amounts were being counted as packages), and leftover unit words like "Tblsp" are cleaned off item names.
+- Every item gets a price estimate now, even unusual ones (a typical price for its aisle when there's nothing closer).
+
 ## 1.12.0 — Nov 24, 2026
 - Price estimates for everything: items nobody has priced yet get a typical price, adjusted for each store (cheaper at Costco, Walmart, Grocery Outlet and Trader Joe's; more at Safeway, Raley's and Whole Foods), marked "est." Receipts, prices you type and live lookups still win.
 - Shopping amounts make sense: one jar of a spice or sauce is enough however many times you make the recipe, and imported amounts in grams no longer turn into "buy 100".

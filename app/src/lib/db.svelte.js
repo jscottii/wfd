@@ -31,7 +31,7 @@ export function need() {
   for (const id of Object.keys(n)) {
     const it = itemById(id); if (!it || n[id] <= 1) continue;
     const est = estimateFor(it.name);
-    if (SHELF.test(it.name) && (!est || ONE_WILL_DO.test(est.pack))) n[id] = 1;
+    if (SHELF.test(it.name) && (!est || est.rough || ONE_WILL_DO.test(est.pack))) n[id] = 1;
   }
   return n;
 }
@@ -42,7 +42,7 @@ export function priceFor(id) {
   const row = app.prices[id] || {};
   const v = Object.values(row).map((e) => e?.price).filter((x) => x > 0);
   if (v.length) return { price: Math.min(...v), est: false };
-  const it = itemById(id), e = it && estimateFor(it.name);
+  const it = itemById(id), e = it && estimateFor(it.name, it.cat);
   return e ? { price: e.price, est: true, pack: e.pack } : { price: 0, est: true };
 }
 export { estimateFor, chainFactor };
@@ -215,25 +215,26 @@ async function seedHousehold() {
   await sb.from('week_plan').insert({ data: { household: 3, days: [] } });
 }
 
-/** One-time fix for items saved by the old importer: "100g minced beef" became "G Minced Beef" × 100 packages. */
+/** One-time fix for things saved by the old importer: gram amounts counted as packages ("100g butter" → 100 packs),
+ *  and unit words left on names ("G Melted Butter", "Tblsp Paprika"). Version 2 also fixes recipes. */
 async function repairItems() {
-  if (app.settings.itemsRepaired >= 1) return;
-  const bad = app.items.filter((it) => /^(g|gr|kg|ml|l)\s/i.test(it.name) || (Number(it.units) >= 20 && /\d\s*(g|kg|ml|grams?)\b/i.test(`${it.qty} ${it.name}`)));
-  const PREP = /^(?:(?:finely|roughly|thinly|freshly|lightly|coarsely)\s+)?(?:chopped|diced|sliced|grated|shredded|beaten|crushed|peeled|cubed|pounded to \S+ thickness|pounded|thin cut|packet(?: of)?)\s+/i;
-  const fixName = (n) => { let x = String(n).replace(/^(g|gr|kg|ml|l)\s+/i, ''); for (let k = 0; k < 3; k++) x = x.replace(PREP, ''); return x.charAt(0).toUpperCase() + x.slice(1); };
-  const prepped = app.items.filter((it) => !bad.includes(it) && PREP.test(it.name));
-  for (const it of [...bad, ...prepped]) {
-    const row = { name: fixName(it.name), ...(bad.includes(it) ? { units: 1, qty: it.qty || '1' } : {}) };
-    const { error } = await sb.from('items').update(row).eq('id', it.id); if (error) continue;
-    Object.assign(it, row);
+  if ((app.settings.itemsRepaired || 0) >= 2) return;
+  const UNIT = /^(g|gr|kg|ml|l|tblsp|tbsp|tbs|tsp|tablespoons?|teaspoons?|cups?|oz)\s+/i;
+  const PREP = /^(?:(?:finely|roughly|thinly|freshly|lightly|coarsely)\s+)?(?:chopped|diced|sliced|grated|shredded|beaten|crushed|peeled|cubed|pounded to \S+ thickness|pounded|thin cut|melted|softened|packet(?: of)?)\s+/i;
+  const fixName = (n) => { let x = String(n); for (let k = 0; k < 3; k++) x = x.replace(UNIT, '').replace(PREP, ''); return x.charAt(0).toUpperCase() + x.slice(1); };
+  for (const it of app.items) {
+    const name = fixName(it.name), units = Number(it.units) > 12 || UNIT.test(it.name) ? 1 : it.units;
+    if (name === it.name && units === it.units) continue;
+    const { error } = await sb.from('items').update({ name, units }).eq('id', it.id);
+    if (!error) Object.assign(it, { name, units });
   }
-  const badIds = new Set(bad.map((x) => x.id));
+  // a recipe needing more than 12 packages of one thing was a gram amount read as a count
   for (const r of app.recipes) {
-    if (!Object.keys(r.items || {}).some((id) => badIds.has(id) && r.items[id] > 1)) continue;
-    const items = Object.fromEntries(Object.entries(r.items).map(([id, u]) => [id, badIds.has(id) ? 1 : u]));
+    if (!Object.values(r.items || {}).some((u) => Number(u) > 12)) continue;
+    const items = Object.fromEntries(Object.entries(r.items).map(([id, u]) => [id, Number(u) > 12 ? 1 : u]));
     const { error } = await sb.from('recipes').update({ items }).eq('id', r.id); if (!error) r.items = items;
   }
-  await saveSettings({ itemsRepaired: 1 });
+  await saveSettings({ itemsRepaired: 2 });
 }
 export async function loadAll() {
   const [st, s, i, p, r, w, pu, m, inv, key, use, pan, uw, ca] = await Promise.all([

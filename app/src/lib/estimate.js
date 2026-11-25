@@ -67,14 +67,22 @@ const P = [
   ['vanilla', 6.99, '2 oz bottle'], ['baking powder|baking soda|yeast', 2.49, 'container'],
   ['cumin|paprika|curry powder|garam masala|turmeric|cinnamon|nutmeg|oregano|chili powder|five spice|star anise|cardamom|cloves|bay|pepper|allspice|coriander seed|fennel seed|sichuan|spice|seasoning|pul biber', 3.99, 'jar'],
   ['salt', 1.99, 'box'],
+  ['taco shells?', 2.99, '12 ct'], ['black pudding|blood sausage', 5.99, '8 oz'], ['vinaigrette|dressing', 3.99, 'bottle'],
+  ['bbq sauce|barbe?que sauce|worcestershire|steak sauce', 3.49, 'bottle'], ['clotted cream|mascarpone|creme fraiche', 4.99, '8 oz'],
+  ['custard|pudding', 3.49, 'pack'], ['granola|cereal', 4.49, 'box'], ['jam|jelly|preserves|marmalade', 3.99, 'jar'],
+  ['ice cream', 5.49, '1.5 qt'], ['juice', 3.99, '52 oz'], ['wine', 9.99, 'bottle'], ['beer', 10.99, '6 pack'],
 ];
+// nothing matched: a typical price for the aisle
+const AISLE = [[/meat|seafood|fish/i, 6.99], [/produce|fruit|veg/i, 2.49], [/dairy|egg/i, 3.99], [/frozen/i, 3.99], [/bakery|bread/i, 3.49]];
 const TABLE = P.map(([m, price, pack]) => ({ re: new RegExp(`(^|[^a-z])(${m})(?![a-z])`, 'i'), price, pack }));
 
 /** Typical price for one package of an item, or null when nothing matches. */
-export function estimateFor(name) {
+export function estimateFor(name, cat = '') {
   const n = String(name || '').toLowerCase();
   const hit = TABLE.find((x) => x.re.test(n));
-  return hit ? { price: hit.price, pack: hit.pack } : null;
+  if (hit) return { price: hit.price, pack: hit.pack };
+  if (!n.trim()) return null;
+  return { price: (AISLE.find(([re]) => re.test(cat)) || [null, 3.49])[1], pack: 'typical item', rough: true };
 }
 
 // How a chain's prices usually compare with a typical supermarket

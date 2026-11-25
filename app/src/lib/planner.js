@@ -110,7 +110,7 @@ function parseShopLine_(line) {
   var units = glued ? 1 : pack ? n : weight ? 1 : /quart|gallon|pint|cup|tbsp|tsp|tablespoon|teaspoon|tblsp|tbs|slice|clove|sprig|pinch|handful/i.test(qty) ? 1 : n;
   return {
     qty: qty.trim(), name: cleanName_(rest.replace(/\s*\([^)]*\)\s*$/, '').trim()),
-    units: Math.max(1, Math.ceil(units - 1e-9)),
+    units: Math.min(12, Math.max(1, Math.ceil(units - 1e-9))),
     oz: weight
   };
 }
@@ -323,7 +323,8 @@ function neededUnits(recipes, plan) {
     if (onPlan && por[r.id]) k = por[r.id].scale;   // on the week plan: scaled to the people eating it
     else if (r.active) k = 1;                       // switched on but not placed on a day: one batch
     else return;
-    Object.keys(r.items || {}).forEach(function (id) { need[id] = (need[id] || 0) + Number(r.items[id] || 0) * k; });
+    // more than 12 packages of one thing per batch is an amount read wrong (grams); count it as one
+    Object.keys(r.items || {}).forEach(function (id) { var u = Number(r.items[id] || 0); need[id] = (need[id] || 0) + (u > 12 ? 1 : u) * k; });
   });
   // round to whole packages, but don't buy a second one for a small overshoot (1.2 bottles of ranch → 1)
   Object.keys(need).forEach(function (id) { var x = need[id]; need[id] = x <= 0 ? 0 : Math.max(1, Math.ceil(x - 0.25)); if (!need[id]) delete need[id]; });

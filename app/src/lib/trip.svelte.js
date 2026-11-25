@@ -58,7 +58,7 @@ export async function planTrip() {
     items.forEach((it) => {
       const row = (prices[it.id] = prices[it.id] || {});
       if (Object.values(row).some((e) => e && e.price > 0 && !e.notFound)) return;
-      const est = estimateFor(it.name); if (!est) return;
+      const est = estimateFor(it.name, it.cat); if (!est) return;
       const packs = n[it.id] || 1;
       nm.stores.forEach((st) => { if (!(row[st.id] && row[st.id].notFound) && (!st.bulk || s.costcoMode === 'unit')) row[st.id] = { price: Math.round(est.price * packs * chainFactor(st) * 100) / 100, source: 'estimate', matched: est.pack }; });
     });
