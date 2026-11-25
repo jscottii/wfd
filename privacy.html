@@ -5,13 +5,13 @@
 <body>
 <a href="./" onclick="if(history.length>1&&document.referrer&&new URL(document.referrer).origin===location.origin){event.preventDefault();history.back();}" style="display:inline-flex;align-items:center;gap:6px;font-weight:600;text-decoration:none;margin-bottom:8px">← Back to WFD</a>
 <h1>Privacy Policy</h1>
-<p><b>WFD — What's for Dinner</b> · Last updated November 21, 2026</p>
+<p><b>WFD — What's for Dinner</b> · Last updated November 24, 2026</p>
 <p>WFD — What's for Dinner helps a household plan weekly meals, shop for them and cook them. This page explains what the app stores, why, and how to delete it.</p>
 
 <h2>What we store</h2>
 <ul>
 <li><b>Your account:</b> your email address and a password (stored only as a secure hash by our database provider, Supabase).</li>
-<li><b>Your household's data:</b> recipes, weekly plans, shopping items, prices you enter or that the app looks up, pantry items, purchase history and the results of receipts you check. Receipt photos are read on your device and are not uploaded or stored.</li>
+<li><b>Your household's data:</b> recipes, weekly plans, shopping items, prices you enter or that the app looks up, pantry items, purchase history and the results of receipts you check. Receipt photos are read on your device and are not uploaded or stored. When you scan barcodes to fill your pantry, only the barcode number is looked up (with Open Food Facts). If you use "photo of a shelf or fridge", that photo is sent once to Anthropic's AI to list the foods it sees; it isn't stored by WFD, and Anthropic doesn't use it to train its models.</li>
 <li><b>Settings:</b> your home address (used to plan shopping routes), store choices and preferences.</li>
 <li><b>Meal preferences:</b> diets, allergies and foods to avoid, used only to suggest and flag recipes for your household.</li>
 <li><b>Messages you send us:</b> what you write in Contact us, the app version, and the email you give if you want a reply.</li>
@@ -36,6 +36,7 @@
 <li><b>OpenStreetMap, Nominatim and OSRM</b> for maps, addresses and drive times. They receive the addresses and store locations being looked up, not your account.</li>
 <li><b>SerpApi</b> to find products when you send a list to Walmart. It receives the item names, not your account.</li>
 <li><b>Instacart, Walmart and Amazon</b> receive your shopping list when you tap their button, and you sign in with them directly. (Amazon links include our Associates tag, so we may earn a small commission on qualifying purchases.)</li>
+<li><b>Open Food Facts</b> for product names when you scan a barcode, and <b>Anthropic</b> (Claude) to read shelf or fridge photos when you use that option.</li>
 <li><b>TheMealDB</b> for recipe ideas and photos, and recipe websites when you save a recipe from a link.</li>
 <li><b>Google AdSense / AdMob</b> for ads in the free version, and <b>Stripe</b> for WFD Plus payments on the web.</li>
 <li><b>The Bare Minimum (Substack)</b> for public recipe posts.</li>

@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.11.1 — Nov 24, 2026
+- Privacy policy now covers barcode scanning (Open Food Facts) and shelf photos (Anthropic).
+
 ## 1.11.0 — Nov 24, 2026
 - Pick for me gives real variety: it no longer gets stuck on the same two or three dishes. It looks for 1.5× as many fitting recipes as it needs (bringing in new ones from your cuisines, then from any cuisine), and mixes proteins and styles.
 - Repick: tap ♡ on the meals you like and "Keep ♥, repick the rest", or "Repick all" for a fresh set of different options. Changing cuisines also gives new picks.
