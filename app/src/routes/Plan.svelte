@@ -32,8 +32,9 @@
   function autoFill(recipes, household) {
     household = Math.max(1, Number(household) || 1);
     const all = DAYS.map((d) => ({ day: d, people: household, breakfast: '', lunch: '', dinner: '', snack: '' }));
-    const g = { breakfast: [], snack: [], main: [] };
-    recipes.forEach((r) => g[kind(r)].push(r));
+    // sides (rice, bread…) aren't placed on their own; they ride along with a main
+    const g = { breakfast: [], snack: [], main: [], side: [] };
+    recipes.forEach((r) => (g[kind(r)] || g.main).push(r));
     placeRecipes(all.slice(shape.from, shape.to + 1), g, shape.meals, shape.snack);
     return all;
   }

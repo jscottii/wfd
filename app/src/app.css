@@ -223,3 +223,10 @@ body.with-anchor .toast { bottom: calc(var(--nav) + 72px + env(safe-area-inset-b
 
 /* our own pull-to-refresh replaces the browser's (which would reload without getting a new version) */
 html, body { overscroll-behavior-y: none; }
+
+/* iPhone zooms the page when you tap a box with text smaller than 16px — keep every box at 16px on touch screens,
+   and stop double-tap zoom on buttons (pinch-to-zoom still works) */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (pointer: coarse) {
+  input, select, textarea, .inl { font-size: 16px !important; }
+}

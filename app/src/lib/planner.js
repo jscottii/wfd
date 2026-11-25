@@ -333,10 +333,11 @@ function autoFillPlan(recipes, household, days) {
     var w = String(r.when || '').toLowerCase();
     if (/breakfast/.test(w)) return 'breakfast';
     if (/snack|dessert|treat/.test(w)) return 'snack';
+    if (/side/.test(w)) return 'side';
     return 'main';
   };
-  var groups = { breakfast: [], snack: [], main: [] };
-  recipes.forEach(function (r) { groups[kind(r)].push(r); });
+  var groups = { breakfast: [], snack: [], main: [], side: [] };
+  recipes.forEach(function (r) { (groups[kind(r)] || groups.main).push(r); });
   ['breakfast', 'snack'].forEach(function (slot) {
     var g = groups[slot]; if (!g.length) return;
     grid.forEach(function (d, i) { d[slot] = g[i % g.length].id; });

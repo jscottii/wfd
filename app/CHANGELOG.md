@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.11.2 — Nov 24, 2026
+- Fix: the app could get stuck on "Loading…" (and the bottom bar stopped working) once a side dish like Steamed rice was saved. Sorry about that.
+- Fix: tapping a text box on iPhone no longer zooms the screen in.
+
 ## 1.11.1 — Nov 24, 2026
 - Privacy policy now covers barcode scanning (Open Food Facts) and shelf photos (Anthropic).
 
