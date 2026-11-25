@@ -3,6 +3,8 @@
   import AdSlot from '../components/AdSlot.svelte';
   import { conflicts, prefsOf } from '../lib/diet.js';
   import MealFacts from '../components/MealFacts.svelte';
+  import RecipeFlow from '../components/RecipeFlow.svelte';
+  import { saveSettings } from '../lib/db.svelte.js';
   import { nutritionOf } from '../lib/nutrition.js';
   import { suggest } from '../lib/fuzzy.js';
   const prefs = $derived(prefsOf(app.settings));
@@ -117,8 +119,12 @@
           <div style="padding:4px 0 14px">
             <MealFacts {r} />
             {#if r.tip}<p class="small muted">{r.tip}</p>{/if}
+            {#if r.steps.length}<div class="seg" style="margin:8px 0"><button class:on={app.settings.recipeView !== 'flow'} onclick={() => saveSettings({ recipeView: 'list' })}>☰ List</button><button class:on={app.settings.recipeView === 'flow'} onclick={() => saveSettings({ recipeView: 'flow' })}>🔀 Flow chart</button></div>{/if}
+            {#if app.settings.recipeView === 'flow' && r.steps.length}<RecipeFlow {r} />
+            {:else}
             <h3>Ingredients</h3><ul class="small">{#each r.ing as x}<li>{x}</li>{/each}</ul>
             {#if r.steps.length}<h3>Steps</h3><ol class="small">{#each r.steps as x}<li>{x}</li>{/each}</ol>{/if}
+            {/if}
             <p class="small muted">{#if r.fridge}Fridge: {r.fridge}. {/if}{#if r.freeze}Freezer: {r.freeze}.{/if}</p>
             <p class="small"><b>Shopping:</b> {Object.entries(r.items).map(([id, u]) => `${itemById(id)?.name || id}${u !== 1 ? ` ×${u}` : ''}`).join(', ') || 'none linked'}</p>
             <div class="row">{#if r.source}<a class="small" href={r.source} target="_blank" rel="noopener">Original ↗</a>{/if}<button class="ghost" onclick={() => edit(r)}>Edit</button><button class="ghost" onclick={() => remove(r)}>Delete</button></div>

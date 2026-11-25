@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.14.0 — Nov 24, 2026
+- Recipes as a flow chart: open any recipe and switch to 🔀 Flow chart to see ingredients down the left and each step as a block joining what it uses (setup like "Preheat the oven" across the top). Tap a step for its full text. Also on Prep's recipe cards, with amounts scaled to your batch.
+- Project carts: "+ Add a recipe" opens the same picker as everywhere else — search your recipes (typos are fine) with photos and nutrition, find new ones, or paste a link.
+
 ## 1.13.0 — Nov 24, 2026
 - Change how many of anything to buy: every item on the Shop list has − / + buttons. Your number sticks for this week ("reset" goes back to what the recipes need) and the trip and total update.
 

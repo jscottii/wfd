@@ -1,4 +1,5 @@
 <script>
+  import RecipePicker from '../components/RecipePicker.svelte';
   import OrderBar from '../components/OrderBar.svelte';
   import { untrack, onDestroy } from 'svelte';
   import { app, createCart, saveCart, archiveCart, cheapestPrice, toast } from '../lib/db.svelte.js';
@@ -24,6 +25,7 @@
 
   let sum = $derived(cart ? totals(cart.lines) : null);
   const byId = (id) => app.recipes.find((r) => r.id === id);
+  let picking = $state(false);
 
   async function make(e) {
     e.preventDefault(); err = '';
@@ -100,10 +102,8 @@
             <button class="quiet" onclick={() => dropRecipe(x.id)}>✕</button></div>
         {/if}
       {/each}
-      <select style="width:auto" value="" onchange={(e) => { addRecipe(e.currentTarget.value); e.currentTarget.value = ''; }}>
-        <option value="">+ Add a recipe…</option>
-        {#each app.recipes.filter((r) => !cart.recipes.some((x) => x.id === r.id)) as r}<option value={r.id}>{r.title}</option>{/each}
-      </select>
+      <button class="ghost" onclick={() => (picking = true)}>＋ Add a recipe</button>
+      {#if picking}<RecipePicker title="Add a recipe to {cart.name || 'this cart'}" exclude={cart.recipes.map((x) => x.id)} onpick={addRecipe} onclose={() => (picking = false)} />{/if}
 
       <h3 style="margin-top:14px">List</h3>
       <form class="row" onsubmit={addTyped}><input class="grow" bind:value={addText} placeholder="Add items: 10 lb ground beef, 4 cans beans, paper plates" /><button type="submit" class="ghost" disabled={!addText.trim()}>Add</button></form>

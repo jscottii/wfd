@@ -17,6 +17,8 @@
   import { enableUpdates, sendUpdate, notifyStatus } from '../lib/notify.js';
   import { liveCookDay, endCookDay } from '../lib/live.js';
   import MealFacts from '../components/MealFacts.svelte';
+  import RecipeFlow from '../components/RecipeFlow.svelte';
+  let flowOf = $state({});
   let { go } = $props();
 
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -346,7 +348,8 @@
         {#each r.ing as x}{#if /:$/.test(String(x).trim())}<li class="small" style="list-style:none;margin:6px 0 0 -18px"><b>{x}</b></li>{:else}<li class="small">{scaleLine(x, k)}</li>{/if}{/each}
       </ul>
     {/if}
-    {#if r.steps.length}<p class="small muted" style="margin:10px 0 0">Steps</p>{/if}
+    {#if r.steps.length}<p class="small muted" style="margin:10px 0 0">Steps <button class="quiet" style="padding:0 6px;font-size:12px" onclick={() => (flowOf[r.id] = !flowOf[r.id])}>{flowOf[r.id] ? 'hide flow chart' : '🔀 see it as a flow chart'}</button></p>{/if}
+    {#if flowOf[r.id]}<RecipeFlow r={{ ...r, ing: r.ing.map((x) => (/:$/.test(String(x).trim()) ? x : scaleLine(x, k))) }} />{/if}
     {#each r.steps as st, i}{@render box(`s|${r.id}|${i}`, scaleStepHtml(st, k), true)}{/each}
     {#if r.fridge || r.freeze}<p class="small muted">{r.fridge ? `🧊 Fridge: ${r.fridge}` : ''}{r.fridge && r.freeze ? ' · ' : ''}{r.freeze ? `❄️ Freezer: ${r.freeze}` : ''}</p>{/if}
     {#if r.tip}<p class="small muted">💡 {r.tip}</p>{/if}
