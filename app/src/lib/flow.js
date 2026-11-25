@@ -17,24 +17,15 @@ function keysOf(line) {
 }
 const rawSentences = (step) => String(step).replace(/^\s*(step\s*)?\d+[.):]\s*/i, '').replace(/([a-z])([A-Z][a-z]+ (?:the|a|an|your|all)\b)/g, '$1. \u0001$2').split(/(?<=[.!?])\s+(?=[A-Z\u0001])/).map((x) => x.trim()).filter(Boolean);
 
-/** Short label for a step: its first sentence without the ingredient names ("Mash the bananas until smooth" → "Mash until smooth"). */
-function labelOf(step, names) {
-  let t = sentences(step)[0] || String(step);
-  for (const n of names) t = t.replace(new RegExp(`\\b(the |your )?${n}(e?s)?\\b`, 'gi'), '');
-  // the names are gone; tidy the joining words left behind ("Add , and to and mash" → "Add and mash")
-  const CONN = /^(,|and|to|into|with|in|the|a|an|of|plus|then|&)$/i, KEEP = ['into', 'to', 'with', 'in', 'and', 'then'];
-  const toks = t.replace(/,/g, ' , ').split(/\s+/).filter(Boolean), out = [];
-  for (let i = 0; i < toks.length; ) {
-    if (!CONN.test(toks[i])) { out.push(toks[i++]); continue; }
-    const run = []; while (i < toks.length && CONN.test(toks[i])) run.push(toks[i++]);
-    if (i >= toks.length) continue;                                 // nothing after it: drop
-    if (!out.length) { const p = run.find((x) => /^(in|into|with)$/i.test(x)); if (p) out.push(p.charAt(0).toUpperCase() + p.slice(1)); continue; }
-    if (run.length === 1) { out.push(run[0]); continue; }
-    out.push(KEEP.find((k) => run.some((x) => x.toLowerCase() === k)) || run[run.length - 1]);
-  }
-  t = out.join(' ').replace(/\s+([,:;])/g, '$1').replace(/^[,\s]+|[,\s.]+$/g, '');
-  if (t.length < 4) t = (sentences(step)[0] || String(step)).replace(/[.]$/, '');
-  return t.length > 48 ? t.slice(0, 46).replace(/\s+\S*$/, '') + '…' : t;
+/** "FOR THE TACOS —", "Steps for Ugali —", "To make the sauce,": a heading, not part of the step */
+const HEADING = /^(?:to make[^,]{0,40},|steps? for [^—:]{0,40}[—:]|for the [^—:]{0,30}[—:])\s*/i;
+/** Short label for a step: the first part of its first sentence, as written ("Crisp the bacon", "Whisk the mix with milk…"). */
+function labelOf(step) {
+  let t = (sentences(step)[0] || String(step)).trim();
+  t = t.replace(HEADING, '');
+  t = t.split(/;|\s+[—–]\s+|,\s*(?:then|and then)\b|\s+until\b|\s+by (?:mixing|combining|whisking|stirring|blending)\b/i)[0].replace(/[.,:\s]+$/, '').trim();
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  return t.length > 44 ? t.slice(0, 42).replace(/[\s,]+\S*$/, '') + '…' : t;
 }
 
 /**
@@ -71,28 +62,32 @@ export function buildFlow(r) {
 /** A step's own title ("Make the soft scrambled eggs — In a cold pan…") is the best label when the recipe has one. */
 function titleOf(st) {
   const m = String(st).match(/^([^.—:]{4,44})\s+[—–-]{1,2}\s+\S/);
-  return m ? m[1].trim() : '';
+  const t = m ? m[1].trim() : '';
+  return !t || t === t.toUpperCase() || /^(?:for the|steps? for)\b/i.test(t) ? '' : t;
 }
 
 function layout(ing, keys, steps) {
   const leaves = ing.map((line, i) => ({ leaf: i, col: 0, used: false }));
   let roots = [...leaves];
-  const setup = [];
+  const setup = [], seq = [];
   const top = (n) => { while (n.parent) n = n.parent; return n; };
   for (const st of steps) {
-    const text = ` ${st.toLowerCase().replace(/[^a-z' ]/g, ' ')} `;
+    const body = st.replace(HEADING, '');
+    const text = ` ${body.toLowerCase().replace(/[^a-z' ]/g, ' ')} `;
     const words = new Set(text.split(/\s+/).filter(Boolean).map(sing));
     const hit = keys.map((k, i) => (k.length && k.some((w) => words.has(w)) ? i : -1)).filter((i) => i >= 0);
-    let groups = [...new Set(hit.map((i) => top(leaves[i])))];
+    let groups = /\ball (?:of )?(?:the )?(?:remaining |other )?ingredients\b/i.test(st) ? [...roots] : [...new Set(hit.map((i) => top(leaves[i])))];
     const started = roots.some((n) => n.used);
     // getting the kitchen ready ("Butter and flour a loaf pan", "Preheat the oven") goes across the top
-    if (!started && (SETUP.test(st) || (/\b(pan|dish|baking sheet|sheet pan|tin|oven|skillet|grill|pot)\b/i.test(st) && !/\b(add|stir|mix|whisk|cook|bake|fry)\b/i.test(st)))) { setup.push({ text: titleOf(st) || labelOf(st, []), full: st }); continue; }
+    if (!started && (SETUP.test(st) || (!hit.length && /\b(pan|dish|baking sheet|sheet pan|tin|oven|skillet|grill|pot)\b/i.test(st) && !/\b(add|stir|mix|whisk|cook|bake|fry)\b/i.test(st)))) { setup.push({ text: titleOf(st) || labelOf(st), full: st }); continue; }
     if (!groups.length) {
-      if (!started) { setup.push({ text: labelOf(st, []), full: st }); continue; }
-      groups = [...roots];   // "Fold", "Bake 55 min", "Let cool": everything so far
+      if (!started) { setup.push({ text: labelOf(st), full: st }); continue; }
+      groups = roots.filter((n) => n.used);   // "Fold", "Bake 55 min", "Let cool": everything so far
     }
-    const names = hit.flatMap((i) => keys[i]);
-    const node = { kids: groups, col: Math.max(...groups.map((g) => g.col)) + 1, label: titleOf(st) || labelOf(st, names), full: st, used: true };
+    const node = { kids: groups, col: Math.max(...groups.map((g) => g.col)) + 1, label: titleOf(st) || labelOf(st), full: st, used: true };
+    node.adds = groups.filter((g) => g.leaf !== undefined).map((g) => ing[g.leaf]);
+    node.after = groups.some((g) => g.leaf === undefined);
+    seq.push(node);
     groups.forEach((g) => { g.parent = node; g.used = true; });
     const at = roots.indexOf(groups[0]);
     roots = roots.filter((n) => !groups.includes(n));
@@ -118,5 +113,7 @@ function layout(ing, keys, steps) {
     if (to - n.col > 1) cells.push({ row: a, rows: b - a + 1, col: n.col + 1, cols: to - n.col - 1, text: '', kind: 'gap' });
   };
   roots.forEach(place);
-  return { setup, rows: order.map((n) => ing[n.leaf]), cells, cols, also };
+  // long recipes (more than 5 step columns) read better top to bottom: each step with the ingredients it brings in
+  const stack = seq.map((n) => ({ text: n.label, full: n.full, adds: n.adds, after: n.after }));
+  return { mode: cols > 6 ? 'stack' : 'grid', setup, rows: order.map((n) => ing[n.leaf]), cells, cols, also, stack };
 }
