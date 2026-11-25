@@ -41,12 +41,16 @@ function labelOf(step, names) {
  * → { setup: [labels across the top], rows: [ingredient lines in table order], cells: [{ row, rows, col, cols, text, full, kind }], cols }
  * row/col are 0-based grid positions; kind: 'ing' | 'step' | 'gap'
  */
+/** Tips, swaps, serving notes and asides: not steps, so they get no box. */
+const NOTE = /^(?:\(|note\b|tip\b|\*|you can\b|you could\b|you may\b|if you\b|if (?:using|desired|preferred|needed)\b|alternatively\b|optional(?:ly)?\b|feel free\b|or\s|for (?:a|an|extra|more)\b[^,]*\b(?:version|flavou?r|heat|kick|twist)|this (?:recipe|dish|can|will|is)\b|it (?:can|will|is)\b|leftovers\b|store\b|keeps?\b|serves?\s+\d|makes?\s+\d|enjoy\b|recipe (?:from|by|adapted)|adapted from|source\b)|\bin place of\b|\binstead of\b|\bcan be (?:made|frozen|stored|substituted|swapped)\b|\bwill keep\b/i;
+const isNote = (s) => NOTE.test(String(s).trim());
+
 export function buildFlow(r) {
   const ing = (r?.ing || []).map(String).filter((x) => x.trim() && !/:\s*$/.test(x));
   if (ing.length < 2 || !(r?.steps || []).length) return null;
   const keys = ing.map(keysOf);
   // one step per sentence, unless that makes it unreadably wide
-  let steps = (r.steps || []).flatMap(sentences).filter((s) => s.split(/\s+/).length >= 3);
+  let steps = (r.steps || []).flatMap(sentences).filter((s) => s.split(/\s+/).length >= 3 && !isNote(s));
   if (steps.length > 12) steps = (r.steps || []).map(String);
   const leaves = ing.map((line, i) => ({ leaf: i, col: 0, used: false }));
   let roots = [...leaves];

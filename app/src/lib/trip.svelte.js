@@ -1,5 +1,5 @@
 // Trip planning: nearest stores + drive times (free maps) → optimizer → route line.
-import { app, need, toast, owned, estimateFor, chainFactor } from './db.svelte.js';
+import { app, need, toast, owned, estimateFor, chainFactor, syncPriceWatch } from './db.svelte.js';
 import { track } from './db.svelte.js';
 import { nearestAndMatrix, routeLine, geocode, haversineMi } from './maps.js';
 import { planTrips } from './optimizer.js';
@@ -35,6 +35,7 @@ export async function planTrip() {
     const start = startAddress(), home = s.homeAddress;
     const nm = await nearestAndMatrix(start, home, stores, s.nearestStores !== false, (t) => (trip.step = t));
     trip.geo = nm.start; trip.stores = nm.stores;
+    if (trip.start === 'home') syncPriceWatch(items.map((i) => i.id), nm.start).catch(() => {});
     // stores beyond your store range (Settings, 25 mi by default) are left out
     const range = Number(s.storeRadius) || 25;
     const near = nm.stores.filter((st) => !st.lat || !nm.start || haversineMi(nm.start, st) <= range);

@@ -695,6 +695,19 @@ export async function refreshPrices(geo, onProgress) {
   return stats;
 }
 
+/**
+ * The weekly price refresh (runs on the server once a week) checks this list: this week's items near home.
+ * Saved only when the list changes, so it doesn't write on every visit.
+ */
+export async function syncPriceWatch(ids, geo) {
+  const zip = (String(app.settings.homeAddress || '').match(/\b(\d{5})(?:-\d{4})?\b(?!.*\b\d{5}\b)/) || [])[1] || '';
+  const w = { ids: [...new Set(ids)].sort().slice(0, 60), lat: geo?.lat ? Math.round(geo.lat * 1000) / 1000 : null, lng: geo?.lng ? Math.round(geo.lng * 1000) / 1000 : null, zip, loc: app.settings.serpLocation || serpLoc || '' };
+  const old = app.settings.priceWatch || {};
+  if (JSON.stringify({ ...old, at: undefined }) === JSON.stringify({ ...w, at: undefined })) return;
+  if (!w.loc) { try { w.loc = await serpLocation(geo); } catch (_) {} }
+  await saveSettings({ priceWatch: { ...w, at: new Date().toISOString() } });
+}
+
 /* ---------------- receipts ---------------- */
 /** Save a checked receipt: prices become "receipt" prices, found items are ticked off, misses are skipped at that store for 30 days. */
 export async function saveReceipt(storeId, rows, date) {

@@ -8,7 +8,7 @@
   import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep, saveSettings, currentHousehold, track } from '../lib/db.svelte.js';
   import { ui, openCart } from '../lib/ui.svelte.js';
   import { usedByRecipes } from '../lib/pantry.js';
-  import { scaleLine, scaleStepHtml, prepLists, cookMinutes, alignSteps, isPrepStep, durationOf, equipmentFor, stepMinutes, fmtMins, scaleTime, pansOf, estimateMins, isCutOnly } from '../lib/cookday.js';
+  import { scaleLine, scaleStepHtml, prepLists, cookMinutes, alignSteps, isPrepStep, durationOf, handsOffTimer, equipmentFor, stepMinutes, fmtMins, scaleTime, pansOf, estimateMins, isCutOnly } from '../lib/cookday.js';
   import { unlockAudio, holdAwake } from '../lib/timers.js';
   import { tap } from '../lib/native.js';
   import Tonight from '../components/Tonight.svelte';
@@ -198,7 +198,7 @@
     const [kind, id, j] = key.split('|');
     if (kind !== 's') return null;
     const r = recipes.find((x) => x.id === id), text = r?.steps[Number(j)];
-    const d = text && durationOf(text);
+    const d = text && handsOffTimer(text);
     if (!d) return null;
     // a bigger batch: time per round (pans in the oven) or the scaled time (bigger roast, bigger pot)
     const k = kOf[r.id] || 1, lo = scaleTime(text, d.mins, k, setup, pansOf(r)), hi = scaleTime(text, d.maxMins, k, setup, pansOf(r));
@@ -390,7 +390,7 @@
       </details>
     {/if}
     {#each e.js as j}
-      {@const d = durationOf(r.steps[j])}
+      {@const d = handsOffTimer(r.steps[j])}
       {@const lo = d ? scaleTime(r.steps[j], d.mins, k, setup, pansOf(r)) : null}
       {@const hi = d ? scaleTime(r.steps[j], d.maxMins, k, setup, pansOf(r)) : null}
       {@render box(`s|${r.id}|${j}`, `${scaleStepHtml(r.steps[j], k)}${d ? ` <span class="pill acc">⏱ ${lo.perRound === hi.perRound ? lo.perRound : `${lo.perRound}–${hi.perRound}`} min${lo.rounds > 1 ? ` × ${lo.rounds} rounds` : ''}</span>${lo.note ? `<br><span class="small muted">📏 ${esc(lo.note)}</span>` : ''}` : ''}`)}

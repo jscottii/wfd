@@ -265,7 +265,7 @@ export function recipesInStep(text, recipes) {
 }
 
 /* ---------------- timers ---------------- */
-const COOKING = /\b(bake|baking|roast|simmer|boil|braise|cook|rest|chill|marinate|toast|broil|steam|reduce|sear|fry|saut|crisp|brown|blanch|poach|grill|set|rise|proof|soak|cool|steep)/i;
+const COOKING = /\b(bake|baking|roast|simmer|boil|braise|cook|rest|chill|marinate|toast|broil|steam|reduce|sear|fry|saut|crisp|brown|blanch|poach|grill|set|rise|proof|soak|cool|steep|sit|stand|leave|infuse|brine|ferment|refrigerat|freez|slow cook|pressure cook)/i;
 /** "Bake covered 400°F 15 min" → { mins: 15, maxMins: 15 }; "1 hr 15 min" → 75; "25–30 min" → 25..30. Only for cooking steps. */
 export function durationOf(text) {
   const t = String(text);
@@ -278,6 +278,25 @@ export function durationOf(text) {
   let lo = m[1] ? Number(m[1]) * (hrs ? 60 : 1) + (m[4] ? Number(m[4]) : 0) : hi;
   if (!(hi > 0) || hi > 12 * 60) return null;
   return { mins: lo, maxMins: hi };
+}
+
+/* Hands-off steps: the food cooks, steeps or sits while you leave it alone. Only these get a timer. */
+const HANDS_OFF = /\b(bak(?:e|es|ed|ing)|roast(?:s|ed|ing)?|simmer(?:s|ed|ing)?|braise[sd]?|braising|boil(?:s|ed|ing)?|steam(?:s|ed|ing)?|poach(?:es|ed|ing)?|rest(?:s|ed|ing)?|chill(?:s|ed|ing)?|refrigerate[sd]?|freeze|marinat(?:e|es|ed|ing)|rise[sn]?|rising|proof(?:s|ed|ing)?|soak(?:s|ed|ing)?|steep(?:s|ed|ing)?|cool(?:s|ed|ing)?|infuse[sd]?|brine[sd]?|ferment(?:s|ed|ing)?|slow[- ]?cook|pressure[- ]?cook|broil(?:s|ed|ing)?|reduce|stand|sit|set(?:s)? (?:up|aside)|cover(?:ed)? and (?:cook|leave)|cook (?:covered|on low|on high)|leave)\b/i;
+const HANDS_ON = /\b(sear(?:s|ed|ing)?|fry|fries|fried|frying|stir[- ]?fr(?:y|ied)|saut[eé]e?(?:s|d|ing)?|brown(?:s|ed|ing)?|whisk(?:ing)?|knead(?:ing)?|beat(?:ing)?|blend(?:ing)?|flip(?:ping)?|toss(?:ing)?|toast(?:ing)?|grill(?:ing)?|mix(?:ing)?|chop(?:ping)?)\b|\b(?:stirring|turning) (?:constantly|continuously|frequently|often)\b|\bconstantly\b/i;
+/** A duration for a step only if that part of the step is hands-off (bake, simmer, marinate, rest…); null for stirring, frying, searing. */
+export function handsOffTimer(text) {
+  const parts = String(text).split(/(?<=[.;!?])\s+|,\s*(?=then\b)|\bthen\b/i);
+  for (const p of parts) {
+    const d = durationOf(p);
+    if (!d) continue;
+    if (!HANDS_OFF.test(p)) continue;
+    // "fry for 5 minutes, stirring" is hands-on; "simmer 20 minutes, stirring occasionally" is not
+    const on = p.match(HANDS_ON);
+    if (on && !(HANDS_OFF.test(p.slice(0, on.index)) || /\bsimmer|\bbake|\broast|\bbraise/i.test(p)) ) continue;
+    if (/\b(?:stirring|turning) (?:constantly|continuously|frequently|often)\b/i.test(p)) continue;
+    return d;
+  }
+  return null;
 }
 
 /* ---------------- matching recipe steps to the game plan ---------------- */
