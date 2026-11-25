@@ -1,0 +1,25 @@
+:root{--bg:#f6f4ee;--card:#fffefb;--ink:#1b2433;--muted:#667085;--line:#e2e1da;--tint:#ebeee9;--accent:#1f5fd1;--accent-dark:#174aa6;--accent-soft:#e7eefb;--green:#3d7a4a;--green-soft:#e8f2ea;--red:#b3261e;--red-soft:#fde8e8}
+*{box-sizing:border-box}
+body{margin:0;width:360px;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+header img{width:24px;height:24px;border-radius:6px}header b{font-family:Georgia,serif;font-size:16px}
+#who{margin-left:auto;font-size:12px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{padding:14px}
+h2{font-family:Georgia,serif;font-size:18px;line-height:1.25;margin:0 0 6px}
+.muted{color:var(--muted)}.small{font-size:12px}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+input[type=email],input[type=password],select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff}
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:999px;background:var(--accent);color:#fff;font:600 14px system-ui,sans-serif;padding:9px 16px;cursor:pointer;text-decoration:none}
+button:disabled{opacity:.6;cursor:default}
+button.ghost,.btn.ghost{background:var(--card);color:var(--accent);border:1px solid var(--line)}
+button.link{background:none;color:var(--accent);padding:0;font-weight:500}
+.wide{width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 12px}
+.rec{display:flex;gap:10px}.rec img{width:72px;height:72px;object-fit:cover;border-radius:9px;flex:none;background:var(--tint)}
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.facts span{background:var(--tint);border-radius:999px;padding:2px 9px;font-size:12px}
+.check{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:14px;margin:10px 0}
+.ok{background:var(--green-soft);color:var(--green);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.err{background:var(--red-soft);color:var(--red);border-radius:10px;padding:10px 12px;margin:8px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+footer{padding:0 14px 12px;font-size:12px;display:flex;justify-content:space-between}
