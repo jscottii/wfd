@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.6.2 — Nov 24, 2026
+- The links at the bottom (Privacy, Help, Contact us, What's new, version) now show on every screen, including sign-in.
+- Help and Privacy pages have a ← Back to WFD button, and open in the app instead of a new browser tab.
+
 ## 1.6.1 — Nov 24, 2026
 - Health note now mentions heart conditions and high blood pressure, and that nutrition numbers are estimates.
 - Invite codes: Settings always shows the code for the household you're in (it refreshes when you switch), says which household it's for, and the "join" box no longer shows a sample code that looked like a real one.
