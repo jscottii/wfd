@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.14.1 — Nov 24, 2026
+- Flow chart: tidier column widths so the steps fit on screen.
+
 ## 1.14.0 — Nov 24, 2026
 - Recipes as a flow chart: open any recipe and switch to 🔀 Flow chart to see ingredients down the left and each step as a block joining what it uses (setup like "Preheat the oven" across the top). Tap a step for its full text. Also on Prep's recipe cards, with amounts scaled to your batch.
 - Project carts: "+ Add a recipe" opens the same picker as everywhere else — search your recipes (typos are fine) with photos and nutrition, find new ones, or paste a link.

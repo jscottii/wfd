@@ -8,7 +8,7 @@
 
 {#if f}
   <div class="flow-wrap">
-    <div class="flow" style="grid-template-columns: minmax(150px, 1.6fr) repeat({f.cols - 1}, minmax(84px, 1fr))">
+    <div class="flow" style="grid-template-columns: minmax(130px, 190px) repeat({f.cols - 1}, minmax(96px, 128px))">
       {#each f.setup as s, i}
         <div class="fc setup" style="grid-row:{i + 1};grid-column:1 / span {f.cols}">{s.text}</div>
       {/each}
@@ -28,8 +28,8 @@
 
 <style>
   .flow-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 6px 0; border: 2px solid #5a9a3a; border-radius: 4px; }
-  .flow { display: grid; min-width: max-content; background: #fffef2; }
-  .fc { border: 1px solid #5a9a3a; padding: 8px 10px; font-size: 14px; line-height: 1.3; display: flex; align-items: center; min-height: 40px; }
+  .flow { display: grid; width: max-content; min-width: 100%; background: #fffef2; }
+  .fc { border: 1px solid #5a9a3a; padding: 6px 8px; font-size: 13px; line-height: 1.3; display: flex; align-items: center; min-height: 36px; }
   .fc.setup { justify-content: center; text-align: center; }
   .fc.ing { font-weight: 500; }
   .fc.step { justify-content: center; text-align: center; background: transparent; color: var(--ink); font-weight: 400; border-radius: 0; cursor: pointer; }
