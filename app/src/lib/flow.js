@@ -15,7 +15,7 @@ function keysOf(line) {
   const words = s.split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)).map(sing);
   return [...new Set(words)];
 }
-const sentences = (step) => String(step).replace(/^\s*(step\s*)?\d+[.):]\s*/i, '').split(/(?<=[.!?])\s+(?=[A-Z])/).map((x) => x.trim()).filter(Boolean);
+const rawSentences = (step) => String(step).replace(/^\s*(step\s*)?\d+[.):]\s*/i, '').replace(/([a-z])([A-Z][a-z]+ (?:the|a|an|your|all)\b)/g, '$1. \u0001$2').split(/(?<=[.!?])\s+(?=[A-Z\u0001])/).map((x) => x.trim()).filter(Boolean);
 
 /** Short label for a step: its first sentence without the ingredient names ("Mash the bananas until smooth" → "Mash until smooth"). */
 function labelOf(step, names) {
@@ -32,7 +32,7 @@ function labelOf(step, names) {
     if (run.length === 1) { out.push(run[0]); continue; }
     out.push(KEEP.find((k) => run.some((x) => x.toLowerCase() === k)) || run[run.length - 1]);
   }
-  t = out.join(' ').replace(/\s+,/g, ',').replace(/^[,\s]+|[,\s.]+$/g, '');
+  t = out.join(' ').replace(/\s+([,:;])/g, '$1').replace(/^[,\s]+|[,\s.]+$/g, '');
   if (t.length < 4) t = (sentences(step)[0] || String(step)).replace(/[.]$/, '');
   return t.length > 48 ? t.slice(0, 46).replace(/\s+\S*$/, '') + '…' : t;
 }
@@ -43,15 +43,26 @@ function labelOf(step, names) {
  */
 /** Tips, swaps, serving notes and asides: not steps, so they get no box. */
 const NOTE = /^(?:\(|note\b|tip\b|\*|you can\b|you could\b|you may\b|if you\b|if (?:using|desired|preferred|needed)\b|alternatively\b|optional(?:ly)?\b|feel free\b|or\s|for (?:a|an|extra|more)\b[^,]*\b(?:version|flavou?r|heat|kick|twist)|this (?:recipe|dish|can|will|is)\b|it (?:can|will|is)\b|leftovers\b|store\b|keeps?\b|serves?\s+\d|makes?\s+\d|enjoy\b|recipe (?:from|by|adapted)|adapted from|source\b)|\bin place of\b|\binstead of\b|\bcan be (?:made|frozen|stored|substituted|swapped)\b|\bwill keep\b/i;
-const isNote = (s) => NOTE.test(String(s).trim());
+const isNote = (s) => NOTE.test(String(s).replace('\u0001', '').trim());
+/** Drop tips, and the sentences that follow a tip in the same step (until a new step was glued on by the importer). */
+const sentences = (step) => rawSentences(step).map((x) => x.replace('\u0001', ''));
+function dropNotes(list) {
+  let skip = false; const out = [];
+  for (const x of list) {
+    if (x.startsWith('\u0001')) skip = false;
+    if (isNote(x)) { skip = true; continue; }
+    if (!skip) out.push(x.replace('\u0001', ''));
+  }
+  return out;
+}
 
 export function buildFlow(r) {
   const ing = (r?.ing || []).map(String).filter((x) => x.trim() && !/:\s*$/.test(x));
   if (ing.length < 2 || !(r?.steps || []).length) return null;
   const keys = ing.map(keysOf);
   // one step per sentence, unless that makes it unreadably wide
-  let steps = (r.steps || []).flatMap(sentences).filter((s) => s.split(/\s+/).length >= 3 && !isNote(s));
-  if (steps.length > 12) steps = (r.steps || []).map(String);
+  let steps = (r.steps || []).flatMap((st) => dropNotes(rawSentences(st))).filter((s) => s.split(/\s+/).length >= 3);
+  if (steps.length > 12) steps = (r.steps || []).map((st) => dropNotes(rawSentences(st)).join(' ')).filter((x) => x.split(/\s+/).length >= 3);
   const leaves = ing.map((line, i) => ({ leaf: i, col: 0, used: false }));
   let roots = [...leaves];
   const setup = [];

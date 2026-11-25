@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.15.1 — Nov 25, 2026
+- Flow chart: catches tips that an imported recipe glued onto the next step, and keeps setup steps ("Heat oven to 350°F") readable on wide charts.
+
 ## 1.15.0 — Nov 25, 2026
 - Prices refresh on their own every Monday for the stores you shop at, so the list totals stay current without you tapping anything. Prices you typed in, locked, or got from a recent receipt are never overwritten.
 - Cook-day timers now start only for hands-off steps (bake, simmer, roast, marinate, rest, rise, steep, chill…), not for stirring, frying or searing.
