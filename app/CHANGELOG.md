@@ -5,6 +5,12 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.16.0 — Nov 25, 2026
+- Flow chart, easier to read: steps keep their own wording ("Crisp the bacon", "Make the guacamole sauce") instead of losing the ingredient names, and recipe headings like "FOR THE TACOS" no longer get mixed in.
+- Long recipes, or charts too wide for your screen, show step by step, top to bottom, with the ingredients each step brings in. Switch between **Chart** and **Step by step** any time.
+- Ingredients no step mentions (salt, pepper…) are listed under the chart instead of leaving empty rows; setup steps ("Preheat the oven") sit above it.
+- New colors that match the rest of the app.
+
 ## 1.15.2 — Nov 25, 2026
 - WFD has its own address: **wfdmeals.app**. The old link forwards there; sign in once more on the new address.
 
