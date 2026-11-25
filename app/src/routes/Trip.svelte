@@ -3,7 +3,7 @@
   import InstallApp from '../components/InstallApp.svelte';
   import { install } from '../lib/install.svelte.js';
   let hideInstall = $state(localStorage.getItem('mp-hide-install') === '1' || matchMedia('(min-width: 900px)').matches);
-  import { app, saveSettings, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
+  import { app, saveSettings, setBuy, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
   import CartEditor from '../components/CartEditor.svelte';
   import OrderBar from '../components/OrderBar.svelte';
   import { linesFor } from '../lib/order.js';
@@ -26,6 +26,11 @@
   let bought = $derived(app.items.filter((i) => n[i.id] && i.have));
   let left = $derived(app.items.filter((i) => n[i.id] && !owned(i)).length);
   let fromPantry = $derived(app.items.filter((i) => n[i.id] && !i.have && covers(app.pantry, i.id)));
+  // − / + on a shopping-list item: how many to buy this week (0 takes it off the list). The trip re-plans.
+  let buyWait = 0;
+  function changeBuy(id, v) {
+    setBuy(id, v).then(() => { clearTimeout(buyWait); buyWait = setTimeout(() => { trip.result = null; }, 900); }).catch((e) => toast(e.message));
+  }
   async function buyAnyway(i) { const p = app.pantry.find((x) => x.item_id === i.id); if (p) { await updatePantry(p.id, { level: 'low' }); trip.result = null; planTrip(); } }
   let byId = $derived(Object.fromEntries(trip.stores.map((s) => [s.id, s])));
   let unpriced = $derived(plan ? plan.stores.reduce((a, s) => a + s.items.filter((i) => i.source === 'unpriced').length, 0) : 0);
@@ -137,7 +142,13 @@
           {@const item = itemById(it.id)}
           <label class="check" class:done={item?.have}>
             <input type="checkbox" checked={!!item?.have} onchange={(e) => (e.currentTarget.checked ? tick(it, st.id) : untick(it.id))} />
-            <span class="grow"><b style:text-decoration={item?.have ? 'line-through' : ''}>{it.name}</b> <span class="muted small">{showAmount(item?.qty, app.settings.units === 'metric' ? 'metric' : 'imperial')}{n[it.id] && n[it.id] !== item?.units ? ` · buy ${n[it.id]}` : ''}</span><br>
+            <span class="grow"><b style:text-decoration={item?.have ? 'line-through' : ''}>{it.name}</b> <span class="muted small">{showAmount(item?.qty, app.settings.units === 'metric' ? 'metric' : 'imperial')}</span>
+              <span class="buyqty" role="group" aria-label="How many to buy">
+                <button type="button" class="quiet" aria-label="One less" disabled={(n[it.id] || 1) <= 1} onclick={(e) => { e.preventDefault(); e.stopPropagation(); changeBuy(it.id, Math.max(1, (n[it.id] || 1) - 1)); }}>−</button>
+                <b>{n[it.id] || 1}</b>
+                <button type="button" class="quiet" aria-label="One more" onclick={(e) => { e.preventDefault(); e.stopPropagation(); changeBuy(it.id, (n[it.id] || 1) + 1); }}>+</button>
+                {#if app.plan.buy?.[it.id] != null}<button type="button" class="quiet small" onclick={(e) => { e.preventDefault(); e.stopPropagation(); changeBuy(it.id, null); }}>reset</button>{/if}
+              </span><br>
               {#if item?.have && cartOf[it.id]}
                 {@const c = cartOf[it.id]}
                 <span class="small"><b>{c.paid != null ? fmt(c.paid) : 'no price'}</b>{c.p?.qty ? ` · ${c.p.qty} ${c.p.unit}${c.p.unit_price ? ` @ ${fmt(c.p.unit_price)}` : ''}` : ''}{!c.edited ? ' (estimate)' : ''}</span>
@@ -181,3 +192,9 @@
   {/if}
   <AdSlot slot="shop-bottom" format="rect" />
 </div>
+
+<style>
+  .buyqty { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 0 2px; vertical-align: middle; }
+  .buyqty button { padding: 2px 8px; font-size: 16px; line-height: 1; }
+  .buyqty b { min-width: 1.4em; text-align: center; font-size: 13px; }
+</style>

@@ -33,6 +33,8 @@ export function need() {
     const est = estimateFor(it.name);
     if (SHELF.test(it.name) && (!est || est.rough || ONE_WILL_DO.test(est.pack))) n[id] = 1;
   }
+  // amounts you changed on the shopping list win (0 = don't buy it this week)
+  for (const [id, v] of Object.entries(app.plan.buy || {})) { if (!(id in n)) continue; if (v > 0) n[id] = v; else delete n[id]; }
   return n;
 }
 export function portions() { return planPortions(app.plan, app.recipes); }
@@ -115,6 +117,12 @@ export async function setHouseholdSize(n) {
   }
 }
 /** Change a few fields of this week's plan (e.g. swap two nights, the serving time, where you're cooking). */
+/** Change how many of an item to buy this week (null = back to what the recipes need). */
+export async function setBuy(id, n) {
+  const buy = { ...(app.plan.buy || {}) };
+  if (n == null) delete buy[id]; else buy[id] = Math.max(0, Math.round(n));
+  await patchPlan({ buy });
+}
 export async function patchPlan(patch) {
   const { weeks: _old, ...rest } = app.plan;
   const plan = { ...rest, ...patch };
@@ -414,7 +422,7 @@ export async function startUpcoming(start) {
 export async function savePlan({ household, shape, days, selected, startNewWeek, pantry, sourceUrl }) {
   const { weeks: _old, ...rest } = app.plan;
   const plan = { ...rest, household: Number(household) || 3, days, ...(shape ? { shape } : {}) };
-  if (startNewWeek) { plan.prepDone = {}; plan.timers = {}; }
+  if (startNewWeek) { plan.prepDone = {}; plan.timers = {}; plan.buy = {}; }
   const { error } = await sb.from('week_plan').upsert({ household_id: app.household, data: plan, updated_at: new Date().toISOString() });
   if (error) fail(error);
   app.plan = plan;
