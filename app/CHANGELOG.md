@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.7.1 — Nov 24, 2026
+- The floating cart button no longer shows on More / Settings.
+
 ## 1.7.0 — Nov 24, 2026
 - Recipes in the bottom bar: one place for My recipes and Find new.
 - Faster recipe finding: results are remembered, so tapping cuisines and meal types back and forth is instant, and only the newest search's results show.
