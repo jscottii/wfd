@@ -5,6 +5,7 @@
   import { ui } from '../lib/ui.svelte.js';
   import MealPrefs from '../components/MealPrefs.svelte';
   import Feedback from '../components/Feedback.svelte';
+  import GuestNote from '../components/GuestNote.svelte';
   import { instacartStores } from '../lib/order.js';
   import { STRIPE_PAYMENT_LINK, STRIPE_PORTAL_LINK, PLUS_PRICE } from '../lib/config.js';
   import { isNative } from '../lib/native.js';
@@ -94,8 +95,10 @@
   <div class="seg" style="margin:6px 0 4px">
     {#each [['settings', 'Settings'], ['history', 'History'], ['stores', 'Stores']] as [k, l]}<button class:on={tab === k} onclick={() => (tab = k)}>{l}</button>{/each}
   </div>
+  {#if isGuest()}<GuestNote leave text="You're using WFD as a guest. You can see your settings, but you'll need an account to change them. Guest data is deleted after 14 days." />{/if}
   <button class="ghost" style="margin:6px 0 0 6px" onclick={() => go('prices')}>🏷️ Prices</button>
 
+  <fieldset class="locked" disabled={isGuest()}>
   {#if tab === 'history'}
     <h1>What you've bought</h1>
     {#each days as d}
@@ -268,12 +271,7 @@
         <button disabled={atMax() || !newHh.trim() || !!hhBusy} onclick={() => hh('new', () => createHousehold(newHh))}>{#if hhBusy === 'new'}<span class="spinner"></span>{/if} Create</button></div>
       <p class="small muted">{atMax() ? `You're in ${MAX_HOUSEHOLDS} households, the most allowed.` : 'Each household has its own recipes, plans, pantry, stores and prices. Switching changes what the whole app shows.'}</p>
       {#if hhErr}<div class="err">⚠️ {hhErr}</div>{/if}
-      {#if isGuest()}
-        <p class="small muted" style="margin-top:10px">You're using WFD as a guest. Leaving guest mode deletes this plan, your recipes and lists for good. To keep them, use <b>Save my meals</b> at the top of the page first.</p>
-        <button class="ghost" style="margin-top:4px" onclick={() => { if (confirm('Leave guest mode? Your guest meals can\'t be brought back.')) signOut(); }}>Leave guest mode</button>
-      {:else}
-        <button class="ghost" style="margin-top:10px" onclick={signOut}>Sign out</button>
-      {/if}
+      {#if !isGuest()}<button class="ghost" style="margin-top:10px" onclick={signOut}>Sign out</button>{/if}
     </div>
     <div class="card">
       <h3>Delete my account</h3>
@@ -290,6 +288,7 @@
       {/if}
     </div>
   {/if}
+  </fieldset>
   <div class="card" id="contact" style="margin-top:16px">
     <h3>Contact us</h3>
     <p class="small muted" style="margin-top:0">Questions, bugs or ideas — send them here.</p>

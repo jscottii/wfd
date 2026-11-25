@@ -5,10 +5,14 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.17.1 — Nov 25, 2026
+- Guests can look at the Pantry and Settings but not change them; **Create an account** unlocks both.
+- Guest data is deleted 14 days after the guest started.
+
 ## 1.17.0 — Nov 25, 2026
 - **Try it without an account:** tap *Continue without an account* on the sign-in screen. Everyone who does gets their own private space, so many people can try it at once without seeing each other's meals.
-- Guest meals aren't saved to an account: they stay only in that browser. Tap **Save my meals** any time to create an account and keep everything.
-- Guests nobody has used for 30 days are cleared out automatically.
+- Guest meals aren't saved to an account: they stay only in that browser. Tap **Create an account** any time to keep everything.
+- Guest data is deleted after 14 days.
 
 ## 1.16.2 — Nov 25, 2026
 - Connected the site to Google AdSense (waiting for Google's review; no ads show yet).

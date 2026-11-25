@@ -1,8 +1,9 @@
 <script>
+  import GuestNote from '../components/GuestNote.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import PantryScan from '../components/PantryScan.svelte';
   let scanning = $state(false);
-  import { app, addPantry, updatePantry, removePantry, toast } from '../lib/db.svelte.js';
+  import { app, addPantry, updatePantry, removePantry, toast, isGuest } from '../lib/db.svelte.js';
   import { parseAdd, daysLeft, covers, placeFor, useByFor } from '../lib/pantry.js';
   import { suggest, learn, loadIngredients } from '../lib/fuzzy.js';
   learn(app.items.map((i) => i.name)); loadIngredients();
@@ -54,6 +55,8 @@
 
 <div class="page wide">
   <div class="spread"><h1>Pantry</h1><button class="quiet" onclick={() => go('plan')}>Plan from it →</button></div>
+  {#if isGuest()}<GuestNote text="The pantry is for accounts. You can look around, but you'll need an account to add or change things." />{/if}
+  <fieldset class="locked" disabled={isGuest()}>
   <button class="ghost" style="width:100%;margin-bottom:8px" onclick={() => (scanning = true)}>📷 Add with the camera — scan barcodes or snap the fridge</button>
   {#if scanning}<PantryScan onclose={() => (scanning = false)} />{/if}
   <p class="muted small">What you already have. Trips skip it, and the Plan tab suggests recipes that use it up. Things you check off on a trip or a receipt are added for you.</p>
@@ -140,4 +143,5 @@
   {/each}
   {#if app.pantry.length}<p class="small muted">Tap an item to change its amount, where it lives, or its use-by date. {relative ? 'Low or Out puts it back on the shopping list.' : 'Fill in how much you have — for a can, jar or bag, also its size. Set it to 0, or tap + List, to put it on the shopping list.'} Change how amounts work in More → Settings.</p>{/if}
   {#if app.pantry.length > 6}<AdSlot slot="pantry-bottom" format="rect" />{/if}
+  </fieldset>
 </div>

@@ -1,5 +1,5 @@
 <script>
-  import { app, start, currentHousehold, joinWithCode, clearPendingCode, MAX_HOUSEHOLDS, createHousehold, need, owned } from './lib/db.svelte.js';
+  import { app, start, currentHousehold, joinWithCode, clearPendingCode, MAX_HOUSEHOLDS, createHousehold, need, owned, isGuest } from './lib/db.svelte.js';
   import { ui, openCart } from './lib/ui.svelte.js';
   import { enableCollapse } from './lib/collapse.js';
   import { onMount } from 'svelte';
@@ -34,7 +34,7 @@
   import { needsName } from './lib/hhname.js';
   import Admin from './routes/Admin.svelte';
   let showOnboard = $state(false), onboardDismissed = $state(false);
-  $effect(() => { if (app.ready && app.household && app.session && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
+  $effect(() => { if (app.ready && app.household && app.session && !isGuest() && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
 
   const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['recipes', '📖', 'Recipes'], ['more', '☰', 'More']];
   const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices', 'admin'];
@@ -109,7 +109,7 @@
   {#if hhOpen}<HouseholdPicker {go} onclose={() => (hhOpen = false)} />{/if}
   <nav class="tabs">
     <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length}<button class="hh" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
-    {#each TABS as [k, ic, label]}<button class:on={page === k} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
+    {#each TABS as [k, ic, label]}<button class:on={page === k} class:dim={k === 'pantry' && isGuest()} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
   </nav>
 {/if}
 {#if app.pendingJoin}

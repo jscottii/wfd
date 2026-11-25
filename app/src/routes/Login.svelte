@@ -70,7 +70,7 @@
     {#if !joining}
       <div class="guest">
         <button class="ghost" style="width:100%" onclick={guest} disabled={busy}>Continue without an account</button>
-        <p class="small muted" style="margin:6px 0 0">Try everything right away. Without an account your meals <b>aren't saved</b>: they stay only in this browser, and they're gone if you sign out, clear your browser data, or switch devices. You can create an account any time to keep them.</p>
+        <p class="small muted" style="margin:6px 0 0">Try it right away. Without an account your meals <b>aren't saved</b>: they stay only in this browser and are deleted after 14 days (or sooner if you sign out or clear your browser). The pantry and settings are view-only. Create an account any time to keep everything.</p>
       </div>
     {/if}
   {/if}
