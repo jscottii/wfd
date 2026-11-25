@@ -3,7 +3,7 @@
   import InstallApp from '../components/InstallApp.svelte';
   import { install } from '../lib/install.svelte.js';
   let hideInstall = $state(localStorage.getItem('mp-hide-install') === '1' || matchMedia('(min-width: 900px)').matches);
-  import { app, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
+  import { app, saveSettings, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
   import CartEditor from '../components/CartEditor.svelte';
   import OrderBar from '../components/OrderBar.svelte';
   import { linesFor } from '../lib/order.js';
@@ -79,7 +79,7 @@
   <AdSlot slot="shop" format="banner" />
 
   <div class="card">
-    <div class="small muted" style="margin-bottom:6px">Starting from (you always end at home)</div>
+    <div class="small muted" style="margin-bottom:6px">Starting from · {app.settings.returnHome ? 'ends back home' : 'ends at your last store'} <button class="quiet" style="padding:0 4px;font-size:12px" onclick={() => saveSettings({ returnHome: !app.settings.returnHome }).then(() => trip.result = null)}>{app.settings.returnHome ? 'end at last store instead' : 'come back home instead'}</button></div>
     <div class="seg">
       <button class:on={trip.start === 'home'} onclick={() => setStart('home')}>🏠 Home</button>
       <button class:on={trip.start === 'here'} onclick={here}>📍 Here</button>

@@ -1,6 +1,7 @@
 // Data layer: Supabase auth, loading, live sync, and every write the app makes.
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, APP_URL } from './config.js';
+import { estimateFor, chainFactor } from './estimate.js';
 import { STORES_SEED, ITEMS_SEED, RECIPES, RECIPE_SERVINGS_SEED, RECIPE_ITEMS_SEED, HOME_DEFAULT, PANTRY_CHECK, SOURCE_URL, TIMELINE, STORAGE } from './seed.js';
 import { neededUnits, planPortions, parseBareMinimum, buildImport, parsePrepGuide, slug_ } from './planner.js';
 import { placeFor, useByFor, covers } from './pantry.js';
@@ -22,9 +23,29 @@ export const app = $state({ pantry: [],
 });
 
 /* ---------------- derived helpers ---------------- */
-export function need() { return neededUnits(app.recipes, app.plan); }
+// spices, sauces and other jars last for many batches: one is enough however many times the recipe is made
+const ONE_WILL_DO = /^(jar|bottle|box|container|5 lb|4 lb|2 lb|42 oz|48 oz|17 oz|15 oz|16 oz|12 oz|7 oz|9 oz|5 oz|2 oz bottle|4 oz jar|8 oz|30 oz|20 oz)$/;
+const SHELF = /spice|seasoning|sauce|paste|oil|vinegar|flour|sugar|starch|salt|honey|syrup|powder|masala|leaf|leaves|seeds?|extract|mirin|wine|sake|doubanjiang|cumin|paprika|cinnamon|nutmeg|oregano|turmeric|cardamom|anise|peppercorn|black pepper|baking/i;
+export function need() {
+  const n = neededUnits(app.recipes, app.plan);
+  for (const id of Object.keys(n)) {
+    const it = itemById(id); if (!it || n[id] <= 1) continue;
+    const est = estimateFor(it.name);
+    if (SHELF.test(it.name) && (!est || ONE_WILL_DO.test(est.pack))) n[id] = 1;
+  }
+  return n;
+}
 export function portions() { return planPortions(app.plan, app.recipes); }
 export function itemById(id) { return app.items.find((i) => i.id === id); }
+/** Cheapest known price for one batch of an item, else a typical-price estimate (est: true). */
+export function priceFor(id) {
+  const row = app.prices[id] || {};
+  const v = Object.values(row).map((e) => e?.price).filter((x) => x > 0);
+  if (v.length) return { price: Math.min(...v), est: false };
+  const it = itemById(id), e = it && estimateFor(it.name);
+  return e ? { price: e.price, est: true, pack: e.pack } : { price: 0, est: true };
+}
+export { estimateFor, chainFactor };
 export function storeById(id) { return app.stores.find((s) => s.id === id); }
 export function recipeById(id) { return app.recipes.find((r) => r.id === id); }
 export function toast(msg) { app.toast = msg; setTimeout(() => { if (app.toast === msg) app.toast = ''; }, 3500); }
@@ -164,6 +185,7 @@ async function boot() {
     app.household = data.household_id;
     if (data.created) await seedHousehold();
     await loadAll();
+    repairItems().catch(() => {});
     loadHouseholds();
     setTimeout(() => backfillImages().catch(() => {}), 4000);
     track('app_open', { native: !!(typeof __NATIVE__ !== 'undefined' && __NATIVE__) });
@@ -193,6 +215,26 @@ async function seedHousehold() {
   await sb.from('week_plan').insert({ data: { household: 3, days: [] } });
 }
 
+/** One-time fix for items saved by the old importer: "100g minced beef" became "G Minced Beef" × 100 packages. */
+async function repairItems() {
+  if (app.settings.itemsRepaired >= 1) return;
+  const bad = app.items.filter((it) => /^(g|gr|kg|ml|l)\s/i.test(it.name) || (Number(it.units) >= 20 && /\d\s*(g|kg|ml|grams?)\b/i.test(`${it.qty} ${it.name}`)));
+  const PREP = /^(?:(?:finely|roughly|thinly|freshly|lightly|coarsely)\s+)?(?:chopped|diced|sliced|grated|shredded|beaten|crushed|peeled|cubed|pounded to \S+ thickness|pounded|thin cut|packet(?: of)?)\s+/i;
+  const fixName = (n) => { let x = String(n).replace(/^(g|gr|kg|ml|l)\s+/i, ''); for (let k = 0; k < 3; k++) x = x.replace(PREP, ''); return x.charAt(0).toUpperCase() + x.slice(1); };
+  const prepped = app.items.filter((it) => !bad.includes(it) && PREP.test(it.name));
+  for (const it of [...bad, ...prepped]) {
+    const row = { name: fixName(it.name), ...(bad.includes(it) ? { units: 1, qty: it.qty || '1' } : {}) };
+    const { error } = await sb.from('items').update(row).eq('id', it.id); if (error) continue;
+    Object.assign(it, row);
+  }
+  const badIds = new Set(bad.map((x) => x.id));
+  for (const r of app.recipes) {
+    if (!Object.keys(r.items || {}).some((id) => badIds.has(id) && r.items[id] > 1)) continue;
+    const items = Object.fromEntries(Object.entries(r.items).map(([id, u]) => [id, badIds.has(id) ? 1 : u]));
+    const { error } = await sb.from('recipes').update({ items }).eq('id', r.id); if (!error) r.items = items;
+  }
+  await saveSettings({ itemsRepaired: 1 });
+}
 export async function loadAll() {
   const [st, s, i, p, r, w, pu, m, inv, key, use, pan, uw, ca] = await Promise.all([
     sb.from('settings').select('data').maybeSingle(),
@@ -342,7 +384,8 @@ export async function archiveCart(id) {
   if (error) fail(error);
   app.carts = app.carts.filter((c) => c.id !== id);
 }
-export const cheapestPrice = (id) => { const v = Object.values(app.prices[id] || {}).map((e) => e?.price).filter((x) => x > 0); return v.length ? Math.min(...v) : 0; };
+// cheapest real price, else a typical estimate (so carts and plan costs aren't $0)
+export const cheapestPrice = (id) => priceFor(id).price;
 
 /* ---------------- upcoming weeks (one row each) ---------------- */
 // A week: { start: 'YYYY-MM-DD' (a Monday), household, days, selected }

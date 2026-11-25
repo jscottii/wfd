@@ -1,5 +1,5 @@
 // Trip planning: nearest stores + drive times (free maps) → optimizer → route line.
-import { app, need, toast, owned } from './db.svelte.js';
+import { app, need, toast, owned, estimateFor, chainFactor } from './db.svelte.js';
 import { track } from './db.svelte.js';
 import { nearestAndMatrix, routeLine, geocode, haversineMi } from './maps.js';
 import { planTrips } from './optimizer.js';
@@ -54,7 +54,15 @@ export async function planTrip() {
       const mid = known[Math.floor(known.length / 2)];
       nm.stores.forEach((st) => { if (level[st.id] != null && !(row[st.id]?.price > 0)) row[st.id] = { price: Math.round(mid * level[st.id] * 100) / 100, source: 'estimate' }; });
     });
-    // items with no price anywhere yet: place them at a stop you're making anyway
+    // items nobody has priced: a typical-price estimate, adjusted for each chain (cheaper at Costco, pricier at Safeway…)
+    items.forEach((it) => {
+      const row = (prices[it.id] = prices[it.id] || {});
+      if (Object.values(row).some((e) => e && e.price > 0 && !e.notFound)) return;
+      const est = estimateFor(it.name); if (!est) return;
+      const packs = n[it.id] || 1;
+      nm.stores.forEach((st) => { if (!(row[st.id] && row[st.id].notFound) && (!st.bulk || s.costcoMode === 'unit')) row[st.id] = { price: Math.round(est.price * packs * chainFactor(st) * 100) / 100, source: 'estimate', matched: est.pack }; });
+    });
+    // anything still unpriced: place it at a stop you're making anyway
     items.forEach((it) => {
       const row = (prices[it.id] = prices[it.id] || {});
       if (Object.values(row).some((e) => e && e.price != null && !e.notFound)) return;
@@ -63,7 +71,7 @@ export async function planTrip() {
     const res = planTrips({ items, stores: nm.stores, prices, matrix: nm.matrix,
       settings: { mpg: +s.mpg, gasPrice: +s.gasPrice, timeValue: +s.timeValue, stopMinutes: +s.stopMinutes, maxStores: +s.maxStores,
         costcoMember: !!s.costcoMember, costcoMode: s.costcoMode, enabled: nm.stores.map((x) => x.id) },
-      start, end: home });
+      start, end: s.returnHome ? home : null });   // most trips end at the last store; "come back here" is optional
     res.itemCount = items.length;
     res.alreadyHave = app.items.filter((i) => n[i.id] > 0 && owned(i)).map((i) => i.id);
     trip.result = res; trip.choice = 'best'; trip.when = Date.now();

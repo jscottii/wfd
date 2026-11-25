@@ -17,10 +17,13 @@ var PLAN_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 /* ============================ pure helpers ============================ */
 
-var BM_UNIT_ = { pound: 16, pounds: 16, lb: 16, lbs: 16, ounce: 1, ounces: 1, oz: 1 };
+var BM_UNIT_ = { pound: 16, pounds: 16, lb: 16, lbs: 16, ounce: 1, ounces: 1, oz: 1,
+  g: 0.03527, gr: 0.03527, gram: 0.03527, grams: 0.03527, kg: 35.27, kilo: 35.27, kilos: 35.27, kilogram: 35.27, kilograms: 35.27,
+  ml: 0.0338, milliliter: 0.0338, milliliters: 0.0338, l: 33.8, liter: 33.8, liters: 33.8, litre: 33.8, litres: 33.8 };
 var BM_PACK_ = ('quart quarts dozen bunch bunches package packages bag bags can cans jar jars bottle bottles wedge wedges head heads ' +
   'bulb bulbs pint pints gallon gallons small medium large box boxes container containers loaf loaves block blocks tub tubs ' +
-  'stick sticks sleeve sleeves carton cartons pack packs clamshell bundle cup cups tbsp tsp slice slices piece pieces').split(' ');
+  'stick sticks sleeve sleeves carton cartons pack packs clamshell bundle cup cups tbsp tsp slice slices piece pieces ' +
+  'clove cloves sprig sprigs pinch handful packet packets tablespoon tablespoons teaspoon teaspoons tblsp tbs').split(' ');
 var BM_MOD_ = {};
 ('fresh large small medium boneless skinless frozen sweet sharp unsalted salted plain whole low moisture shredded grated dried ground ' +
  'crushed smoked red green yellow white black light dark extra virgin baby cold hot mild spicy italian greek old fashioned long ' +
@@ -77,10 +80,13 @@ function num_(s) {
 }
 
 /** "2 cans (15 oz) cannellini beans" → { qty:'2 cans (15 oz)', name:'cannellini beans', units:2, oz:null } */
+// "Finely chopped Carrots" → "Carrots", "Pounded to 1cm thickness chicken breast" → "chicken breast"
+var PREP_ = /^(?:(?:finely|roughly|thinly|freshly|lightly|coarsely|very)\s+)?(?:chopped|diced|sliced|grated|shredded|beaten|crushed|peeled|cubed|julienned|halved|quartered|torn|melted|softened|cooked|boiled|steamed|toasted|thin cut|thick cut|pounded to [^ ]+ thickness|pounded|trimmed|rinsed|drained|packet(?: of)?|to serve|for frying|garnish|to taste)\s+/i;
+function cleanName_(n) { var s = String(n || '').trim(), g = 0; while (PREP_.test(s) && g++ < 4) s = s.replace(PREP_, ''); return s.replace(/^(of|the)\s+/i, '') || String(n || '').trim(); }
 function parseShopLine_(line) {
   var s = String(line).trim().replace(/^(about|around|roughly|approx\.?)\s+/i, '').replace(/^half\s+(?=gallon|pound|dozen|cup)/i, '½ ');
   var m = s.match(/^(\d+\s*[½¼¾⅓⅔⅛]|\d*[½¼¾⅓⅔⅛]|\d+\/\d+|\d+\s+\d+\/\d+|\d+(?:\.\d+)?)(?:\s*(?:-|to)\s*\d+(?:\.\d+)?(?=\s))?/);
-  if (!m) return { qty: '', name: s.replace(/\s*\([^)]*\)\s*$/, ''), units: 1, oz: null };
+  if (!m) return { qty: '', name: cleanName_(s.replace(/\s*\([^)]*\)\s*$/, '')), units: 1, oz: null };
   var raw = m[1], n = /\s\d+\/\d+$/.test(raw) ? Number(raw.split(/\s+/)[0]) + num_(raw.split(/\s+/)[1]) : num_(raw);
   var rest = s.slice(m[0].length), qty = m[0].trim(), weight = null, glued = false, pack = false, bare = false, w;
   for (var guard = 0; guard < 6; guard++) {
@@ -95,15 +101,15 @@ function parseShopLine_(line) {
     if ((w = rest.match(/^\s*([A-Za-z]+)\.?(?=\s|$)\s*/)) && (BM_UNIT_[w[1].toLowerCase()] || BM_PACK_.indexOf(w[1].toLowerCase()) >= 0)) {
       var k = w[1].toLowerCase();
       if (BM_UNIT_[k]) { if (weight == null) weight = n * BM_UNIT_[k]; bare = true; }
-      if (!BM_UNIT_[k] && !bare && !/^(small|medium|large|cups?|tbsp|tsp|quarts?|gallons?|pints?|dozen|slices?)$/.test(k)) pack = true;
+      if (!BM_UNIT_[k] && !bare && !/^(small|medium|large|cups?|tbsp|tsp|tablespoons?|teaspoons?|tblsp|tbs|quarts?|gallons?|pints?|dozen|slices?|cloves?|sprigs?|pinch|handful)$/.test(k)) pack = true;
       if (k === 'dozen') pack = true;
       qty += ' ' + w[1]; rest = rest.slice(w[0].length); continue;
     }
     break;
   }
-  var units = glued ? 1 : pack ? n : weight ? 1 : /quart|gallon|pint|cup|tbsp|tsp|slice/i.test(qty) ? 1 : n;
+  var units = glued ? 1 : pack ? n : weight ? 1 : /quart|gallon|pint|cup|tbsp|tsp|tablespoon|teaspoon|tblsp|tbs|slice|clove|sprig|pinch|handful/i.test(qty) ? 1 : n;
   return {
-    qty: qty.trim(), name: rest.replace(/\s*\([^)]*\)\s*$/, '').trim(),
+    qty: qty.trim(), name: cleanName_(rest.replace(/\s*\([^)]*\)\s*$/, '').trim()),
     units: Math.max(1, Math.ceil(units - 1e-9)),
     oz: weight
   };

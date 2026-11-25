@@ -4,6 +4,7 @@
   import { conflicts, prefsOf } from '../lib/diet.js';
   import MealFacts from '../components/MealFacts.svelte';
   import { nutritionOf } from '../lib/nutrition.js';
+  import { suggest } from '../lib/fuzzy.js';
   const prefs = $derived(prefsOf(app.settings));
   import { app, portions, itemById, setRecipeActive, saveRecipe, deleteRecipe, importRecipeUrl, toast } from '../lib/db.svelte.js';
   import FindRecipes from '../components/FindRecipes.svelte';
@@ -18,7 +19,8 @@
   let est = $derived(editing ? nutritionOf({ ing: editing.ingText.split('\n').filter(Boolean), servings: Number(editing.servings) || 4 }) : null);
   let open = $state(null), editing = $state(null), busy = $state(false), q = $state('');
   let por = $derived(portions());
-  let list = $derived(app.recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase())).slice().sort((a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt))));
+  let near = $derived(q.trim().length > 2 ? new Set(suggest(q, app.recipes.map((r) => r.title), 30)) : new Set());
+  let list = $derived(app.recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase()) || near.has(r.title)).slice().sort((a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt))));
   const blank = () => ({ id: '', title: '', when: 'Lunch/Dinner', servings: 4, yield: '', fridge: '', freeze: '', ingText: '', stepsText: '', tip: '', items: [], newItems: [] });
 
   function edit(r) {

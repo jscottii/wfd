@@ -1,3 +1,4 @@
+import { correct } from './fuzzy.js';
 // Pantry: what's on hand, where it lives, when to use it, and which recipes it covers.
 
 const FRIDGE = /produce|meat|dairy|deli|seafood|fish|refrigerated|eggs/i;
@@ -64,8 +65,10 @@ export function parseAdd(text, items) {
   return String(text).split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean).map((line) => {
     const m = line.match(/^((?:\d+(?:[./]\d+)?|[½¼¾⅓⅔]|half(?: a)?|a|an|one|two|three)\s*(?:[½¼¾⅓⅔])?\s*(?:lbs?|pounds?|oz|ounces?|bags?|cans?|jars?|boxes?|packs?|packages?|bunch(?:es)?|heads?|dozen|cups?|gallons?|bottles?|cartons?|loaf|loaves|blocks?|sticks?)?\.?)\s+(?:of\s+)?(.+)$/i);
     const amount = m ? m[1].trim() : '', name = m ? m[2].trim() : line;
-    const it = matchItem(name, items);
-    return { name: it ? it.name : name.replace(/^./, (c) => c.toUpperCase()), amount, item_id: it?.id || null, cat: it?.cat || '' };
+    // typos: "chiken thies" → "chicken thighs" before matching
+    const fixed = correct(name).text;
+    const it = matchItem(name, items) || matchItem(fixed, items);
+    return { name: it ? it.name : fixed.replace(/^./, (c) => c.toUpperCase()), amount, item_id: it?.id || null, cat: it?.cat || '', fixedFrom: !it && fixed !== name ? name : '' };
   });
 }
 

@@ -1,6 +1,6 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
-  import { app, saveSettings, itemById, recipeById, saveRecipe, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
+  import { app, saveSettings, itemById, recipeById, saveRecipe, cheapestPrice, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
   import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -71,7 +71,7 @@
   });
 
   // recipes ranked by what's already in the pantry
-  const priceOf = (id) => { const row = app.prices[id] || {}; const v = Object.values(row).map((e) => e?.price).filter((x) => x > 0); return v.length ? Math.min(...v) : 0; };
+  const priceOf = (id) => cheapestPrice(id);
   // Cook from the pantry: pick the items you want to use up; recipes are ranked by how many of them they use.
   let onHand = $derived(app.pantry.filter((p) => !['low', 'out'].includes(p.level)));
   // how many saved recipes each pantry item could anchor

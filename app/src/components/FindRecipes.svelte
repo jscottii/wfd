@@ -5,6 +5,9 @@
   import { conflicts, conflictText, prefsOf } from '../lib/diet.js';
   import AdSlot from './AdSlot.svelte';
   import MealFacts from './MealFacts.svelte';
+  import { correct, learn, loadIngredients } from '../lib/fuzzy.js';
+  learn([...app.items.map((i) => i.name), ...app.recipes.map((r) => r.title)]); loadIngredients();
+  let fixedQ = $state(''), exact = false;   // the corrected search, when typos were fixed
   const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${conflictText(c)}` : ''; };
   // onadd(recipe) — called for each recipe added (e.g. to drop it into a week); onbm — open the Bare Minimum weeks
   let { onadd = null, onbm = null, onclose = null } = $props();
@@ -39,7 +42,15 @@
     if (s) { sites = []; sitesBusy = true; callProxy({ action: 'recipe-search', q: s }).then((r) => { if (my === seq) sites = r.results || []; }).catch(() => {}).finally(() => { if (my === seq) sitesBusy = false; }); }
     else { sites = []; sitesBusy = false; }
     try {
-      const found = await findIdeas({ cuisines: s ? [] : pick.cuisines, types: s ? [] : pick.types, search: s });
+      let found = await findIdeas({ cuisines: s ? [] : pick.cuisines, types: s ? [] : pick.types, search: s });
+      // typos: "chiken tika" → also search "chicken tikka", best of both
+      fixedQ = '';
+      const c = s && !exact ? correct(s) : null;
+      if (c?.changed) {
+        const more = await findIdeas({ search: c.text });
+        if (more.length > found.length) { found = [...more, ...found.filter((x) => !more.some((y) => y.id === x.id))]; fixedQ = c.text; }
+      }
+      exact = false;
       if (my !== seq) return;
       ideas = found;
       if (!found.length) err = s ? `No recipes called “${s}” in the free collection — web results below, or try one word like “chicken”.` : 'Nothing matches that mix — try unpicking something.';
@@ -104,7 +115,7 @@
   </form>
   {#if onbm}<p class="small" style="margin:6px 0 0"><button class="quiet" onclick={onbm}>Bring in a full week of meals →</button></p>{/if}
 
-  {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking…</p>{:else if q.trim() && ideas.length}<p class="small muted" style="margin:8px 0 0">{ideas.length} recipe{ideas.length === 1 ? '' : 's'} for “{q.trim()}”</p>{/if}
+  {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking…</p>{:else if fixedQ && ideas.length}<p class="small" style="margin:8px 0 0">Showing recipes for <b>“{fixedQ}”</b> · <button class="quiet" style="padding:0" onclick={() => { exact = true; look(); }}>search for “{q.trim()}” instead</button></p>{:else if q.trim() && ideas.length}<p class="small muted" style="margin:8px 0 0">{ideas.length} recipe{ideas.length === 1 ? '' : 's'} for “{q.trim()}”</p>{/if}
   <div class="ideas">
     {#if hidden}<p class="small muted" style="grid-column:1/-1;margin:0">Hiding {hidden} that don’t fit your diets or allergies · <button class="quiet" style="padding:0" onclick={() => (showAll = true)}>Show them</button></p>
     {:else if showAll && strict}<p class="small muted" style="grid-column:1/-1;margin:0">Showing everything · <button class="quiet" style="padding:0" onclick={() => (showAll = false)}>Hide ones that don’t fit</button></p>{/if}

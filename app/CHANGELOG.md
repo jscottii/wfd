@@ -5,6 +5,13 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.12.0 — Nov 24, 2026
+- Price estimates for everything: items nobody has priced yet get a typical price, adjusted for each store (cheaper at Costco, Walmart, Grocery Outlet and Trader Joe's; more at Safeway, Raley's and Whole Foods), marked "est." Receipts, prices you type and live lookups still win.
+- Shopping amounts make sense: one jar of a spice or sauce is enough however many times you make the recipe, and imported amounts in grams no longer turn into "buy 100".
+- Cleaner item names from new recipes ("Finely chopped Carrots" → "Carrots", "100g Minced Beef" → "Minced Beef"), and your existing items are tidied up once.
+- Typos are understood: Find new searches "chiken tika masala" as "chicken tikka masala" (with a "search for what I typed" link), Saved recipes search forgives slips, and the Pantry box suggests the item you meant as you type.
+- Shopping trips start from home and end at your last store. Want a round trip? Turn it on in Settings or with one tap on Shop.
+
 ## 1.11.2 — Nov 24, 2026
 - Fix: the app could get stuck on "Loading…" (and the bottom bar stopped working) once a side dish like Steamed rice was saved. Sorry about that.
 - Fix: tapping a text box on iPhone no longer zooms the screen in.

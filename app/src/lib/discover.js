@@ -51,7 +51,7 @@ export function fromMealDb(m) {
     const name = String(m['strIngredient' + i] || '').trim(), meas = String(m['strMeasure' + i] || '').trim();
     if (!name) continue;
     ing.push(`${meas} ${name}`.trim());
-    if (!STAPLE.test(name)) shopping.push({ line: shopLine(`${/^\d/.test(meas) ? meas + ' ' : ''}${name}`), section: sectionOf(name) });
+    if (!STAPLE.test(name)) shopping.push({ line: shopLine(`${/^\d/.test(meas) ? meas.replace(/(\d)([a-z])/i, '$1 $2') + ' ' : ''}${name}`), section: sectionOf(name) });
   }
   return toParsed({ title: m.strMeal, servings: 4, cuisine: m.strArea, when: mealOf(m.strCategory), ing, steps: splitSteps(m.strInstructions),
     url: m.strSource || `https://www.themealdb.com/meal/${m.idMeal}`, shopping, image: m.strMealThumb || '' });

@@ -143,7 +143,8 @@
     <div class="card">
       <label class="f">Who you cook for<select bind:value={s.audience} onchange={() => { saveSettings({ audience: s.audience }); toast(s.audience === "group" ? "✓ Big-group mode: more detail everywhere" : "✓ Household mode: simpler screens"); }}><option value="household">My household — keep it simple</option><option value="group">A big group (10+) — show me the details</option></select></label>
       <label class="f">Show pantry amounts in<select bind:value={s.units}><option value="imperial">Imperial — lb, oz, cups</option><option value="metric">Metric — kg, g, L</option><option value="relative">Roughly — plenty, some, low, out</option></select></label>
-      <label class="f">Home address (trips end here)<input bind:value={s.homeAddress} /></label>
+      <label class="f">Home address (where shopping trips usually start)<input bind:value={s.homeAddress} /></label>
+      <label class="row small" style="gap:6px;margin:-4px 0 8px"><input type="checkbox" checked={!!app.settings.returnHome} onchange={(e) => saveSettings({ returnHome: e.currentTarget.checked })} /> Plan trips as round trips (drive back home at the end)</label>
       <label class="f">Store range: shop at stores within <b>{s.storeRadius || 25} miles</b><input type="range" min="5" max="50" step="5" bind:value={s.storeRadius} /></label>
       <div class="grid2">
         <label class="f">Usually feeding (people)<input type="number" min="1" bind:value={s.householdSize} /></label>

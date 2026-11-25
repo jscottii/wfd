@@ -28,12 +28,13 @@ function permutations_(arr) {
 }
 
 /** Best start→stores→end order for a subset, using the precomputed matrix. */
-function bestRoute_(subset, matrix) {
+function bestRoute_(subset, matrix, oneWay) {
   var idx = {};
   matrix.nodes.forEach(function (n, i) { idx[n] = i; });
   var best = null;
   permutations_(subset).forEach(function (order) {
-    var path = ['start'].concat(order).concat(['end']);
+    // one-way trips end at the last store; otherwise drive back to the end point (usually home)
+    var path = oneWay ? ['start'].concat(order) : ['start'].concat(order).concat(['end']);
     var m = 0, s = 0;
     for (var k = 0; k < path.length - 1; k++) {
       m += matrix.dist[idx[path[k]]][idx[path[k + 1]]];
@@ -49,8 +50,10 @@ function bestRoute_(subset, matrix) {
 /** Google Maps directions link (official Maps URLs format). */
 function mapsUrl_(start, end, orderedStores) {
   var enc = encodeURIComponent;
+  var stops = orderedStores.slice();
+  if (!end && stops.length) end = stops.pop().address;   // one-way: the last store is the destination
   var url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=' + enc(start) + '&destination=' + enc(end);
-  if (orderedStores.length) url += '&waypoints=' + orderedStores.map(function (s) { return enc(s.address); }).join('%7C');
+  if (stops.length) url += '&waypoints=' + stops.map(function (s) { return enc(s.address); }).join('%7C');
   return url;
 }
 
@@ -101,7 +104,7 @@ function planTrips(input) {
     var used = subset.filter(function (sid) { return assign[sid] && assign[sid].length; });
     if (used.length !== subset.length) continue;
 
-    var route = bestRoute_(used, input.matrix);
+    var route = bestRoute_(used, input.matrix, !input.end);
     var miles = route.meters / 1609.344;
     var driveMin = route.seconds / 60;
     var stopMin = Number(st.stopMinutes || 0) * used.length;

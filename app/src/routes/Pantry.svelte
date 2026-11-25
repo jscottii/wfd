@@ -4,6 +4,12 @@
   let scanning = $state(false);
   import { app, addPantry, updatePantry, removePantry, toast } from '../lib/db.svelte.js';
   import { parseAdd, daysLeft, covers, placeFor, useByFor } from '../lib/pantry.js';
+  import { suggest, learn, loadIngredients } from '../lib/fuzzy.js';
+  learn(app.items.map((i) => i.name)); loadIngredients();
+  // suggestions for the item being typed (the text after the last comma or new line)
+  const lastPart = (t) => (String(t).split(/[\n,;]/).pop() || '').replace(/^\s*(?:\d+(?:[./]\d+)?|[½¼¾⅓⅔]|half(?: a)?|a|an)\s*(?:lbs?|pounds?|oz|bags?|cans?|jars?|boxes?|packs?|bunch(?:es)?|dozen|cups?|gallons?|bottles?)?\.?\s*(?:of\s+)?/i, '').trim();
+  let ideasFor = $derived(lastPart(text).length >= 3 ? suggest(lastPart(text), [...new Set(app.items.map((i) => i.name))], 4).filter((n) => n.toLowerCase() !== lastPart(text).toLowerCase()) : []);
+  function pickIdea(n) { const parts = text.split(/([\n,;])/); const last = parts.pop(); const lead = last.match(/^\s*(?:\d+(?:[./]\d+)?|[½¼¾⅓⅔]|half(?: a)?|a|an)?\s*(?:lbs?|pounds?|oz|bags?|cans?|jars?|boxes?|packs?|bunch(?:es)?|dozen|cups?|gallons?|bottles?)?\.?\s*(?:of\s+)?/i)?.[0] || ''; text = parts.join('') + lead + n + ', '; }
   import { showAmount, splitContainer, joinContainer, UNIT_CHOICES, CONTAINERS, SIZE_UNITS } from '../lib/units.js';
   const relative = $derived(app.settings.units === 'relative');
   const mode = $derived(app.settings.units === 'metric' ? 'metric' : 'imperial');
@@ -56,11 +62,12 @@
 
   <form class="card" onsubmit={addTyped}>
     <label class="f">Add what you have — separate with commas or new lines
-      <textarea bind:value={text} rows="2" placeholder="2 lb chicken thighs, rice, half a bag of spinach, 1 dozen eggs"></textarea>
+      <textarea bind:value={text} rows="2" placeholder="2 lb chicken thighs, rice, half a bag of spinach, 1 dozen eggs" autocomplete="off" autocorrect="on" spellcheck="true"></textarea>
     </label>
+    {#if ideasFor.length}<div class="row" style="gap:4px;margin:-4px 0 8px"><span class="small muted">Did you mean</span>{#each ideasFor as n}<button type="button" class="chip" onclick={() => pickIdea(n)}>{n}</button>{/each}</div>{/if}
     {#if preview.length}
       <div class="row" style="gap:4px;margin-bottom:8px">
-        {#each preview as r}<span class="pill" class:live={r.item_id}>{r.amount ? showAmount(r.amount, mode) + ' ' : ''}{r.name}{r.item_id ? '' : ' (new)'}</span>{/each}
+        {#each preview as r}<span class="pill" class:live={r.item_id}>{r.amount ? showAmount(r.amount, mode) + ' ' : ''}{r.name}{r.item_id ? '' : ' (new)'}{r.fixedFrom ? ` ← “${r.fixedFrom}”` : ''}</span>{/each}
       </div>
     {/if}
     <div class="row">
