@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.16.1 — Nov 25, 2026
+- You can now email us at support@wfdmeals.app (listed on the Help and Privacy pages).
+
 ## 1.16.0 — Nov 25, 2026
 - Flow chart, easier to read: steps keep their own wording ("Crisp the bacon", "Make the guacamole sauce") instead of losing the ingredient names, and recipe headings like "FOR THE TACOS" no longer get mixed in.
 - Long recipes, or charts too wide for your screen, show step by step, top to bottom, with the ingredients each step brings in. Switch between **Chart** and **Step by step** any time.
