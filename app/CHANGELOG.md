@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.15.2 — Nov 25, 2026
+- WFD has its own address: **wfdmeals.app**. The old link forwards there; sign in once more on the new address.
+
 ## 1.15.1 — Nov 25, 2026
 - Flow chart: catches tips that an imported recipe glued onto the next step, and keeps setup steps ("Heat oven to 350°F") readable on wide charts.
 

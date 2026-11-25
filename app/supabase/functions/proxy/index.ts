@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
           display_text: x.display ? String(x.display).slice(0, 100) : undefined,
           line_item_measurements: x.quantity ? [{ quantity: Number(x.quantity) || 1, unit: String(x.unit || 'each') }] : undefined,
         })),
-        landing_page_configuration: { partner_linkback_url: 'https://jscottii.github.io/wfd/' },
+        landing_page_configuration: { partner_linkback_url: 'https://wfdmeals.app/' },
       };
       // live key first; a development key only works against Instacart's test site
       for (const base of ['https://connect.instacart.com', 'https://connect.dev.instacart.tools']) {
