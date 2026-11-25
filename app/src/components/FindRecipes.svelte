@@ -22,15 +22,15 @@
   const prefs = $derived(prefsOf(app.settings));
   const strict = $derived(prefs.diets.length + prefs.allergies.length + prefs.avoid.length > 0);
   $effect(() => {
-    const want = ideas.slice(0, 36).filter((i) => !(i.id in untrack(() => details)));
+    const want = ideas.slice(0, 90).filter((i) => !(i.id in untrack(() => details)));
     if (!want.length) return;
     let n = 0;
     const next = async () => { while (n < want.length) { const i = want[n++]; try { const r = fromMealDb(await mealDetail(i.id)).recipes[0]; details[i.id] = { title: r.title, ing: r.ing, servings: r.servings || 4 }; } catch { details[i.id] = null; } } };
     Promise.all([next(), next(), next(), next(), next(), next()]);   // six at a time
   });
   const clashes = (i) => details[i.id] && conflicts(details[i.id], prefs).any;
-  let shown = $derived(ideas.slice(0, 36).filter((i) => showAll || !strict || !clashes(i)).slice(0, 24));
-  let hidden = $derived(strict && !showAll ? ideas.slice(0, 36).filter(clashes).length : 0);
+  let shown = $derived(ideas.slice(0, 90).filter((i) => showAll || !strict || !clashes(i)).slice(0, 24));
+  let hidden = $derived(strict && !showAll ? ideas.slice(0, 90).filter(clashes).length : 0);
   // only the newest search gets to show its results; earlier ones that finish late are ignored
   let seq = 0, wait = 0, sitesBusy = $state(false);
   async function look() {

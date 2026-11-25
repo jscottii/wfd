@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.10.1 — Nov 24, 2026
+- Find new checks more recipes against your diets, so strict diets (like low-FODMAP) still get a full page of ones that fit.
+
 ## 1.10.0 — Nov 24, 2026
 - Find new hides recipes that don't fit your diets or allergies (with a "show them" link), and every result shows its calories, protein and diet badges.
 - Correct a recipe's nutrition: when editing a recipe, type your own calories, protein, carbs and fat per serving (blank = keep the estimate). Servings were already editable there.
