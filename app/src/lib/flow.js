@@ -60,9 +60,21 @@ export function buildFlow(r) {
   const ing = (r?.ing || []).map(String).filter((x) => x.trim() && !/:\s*$/.test(x));
   if (ing.length < 2 || !(r?.steps || []).length) return null;
   const keys = ing.map(keysOf);
-  // one step per sentence, unless that makes it unreadably wide
-  let steps = (r.steps || []).flatMap((st) => dropNotes(rawSentences(st))).filter((s) => s.split(/\s+/).length >= 3);
-  if (steps.length > 12) steps = (r.steps || []).map((st) => dropNotes(rawSentences(st)).join(' ')).filter((x) => x.split(/\s+/).length >= 3);
+  // one block per sentence reads best for short recipes; long ones get one block per step so the chart stays narrow
+  const bySentence = (r.steps || []).flatMap((st) => dropNotes(rawSentences(st))).filter((s) => s.split(/\s+/).length >= 3);
+  const byStep = (r.steps || []).map((st) => dropNotes(rawSentences(st)).join(' ')).filter((x) => x.split(/\s+/).length >= 3);
+  let f = bySentence.length <= 12 ? layout(ing, keys, bySentence) : null;
+  if (!f || f.cols > 6) f = layout(ing, keys, byStep) || f;
+  return f;
+}
+
+/** A step's own title ("Make the soft scrambled eggs — In a cold pan…") is the best label when the recipe has one. */
+function titleOf(st) {
+  const m = String(st).match(/^([^.—:]{4,44})\s+[—–-]{1,2}\s+\S/);
+  return m ? m[1].trim() : '';
+}
+
+function layout(ing, keys, steps) {
   const leaves = ing.map((line, i) => ({ leaf: i, col: 0, used: false }));
   let roots = [...leaves];
   const setup = [];
@@ -74,19 +86,22 @@ export function buildFlow(r) {
     let groups = [...new Set(hit.map((i) => top(leaves[i])))];
     const started = roots.some((n) => n.used);
     // getting the kitchen ready ("Butter and flour a loaf pan", "Preheat the oven") goes across the top
-    if (!started && (SETUP.test(st) || (/\b(pan|dish|baking sheet|sheet pan|tin|oven|skillet|grill|pot)\b/i.test(st) && !/\b(add|stir|mix|whisk|cook|bake|fry)\b/i.test(st)))) { setup.push({ text: labelOf(st, []), full: st }); continue; }
+    if (!started && (SETUP.test(st) || (/\b(pan|dish|baking sheet|sheet pan|tin|oven|skillet|grill|pot)\b/i.test(st) && !/\b(add|stir|mix|whisk|cook|bake|fry)\b/i.test(st)))) { setup.push({ text: titleOf(st) || labelOf(st, []), full: st }); continue; }
     if (!groups.length) {
       if (!started) { setup.push({ text: labelOf(st, []), full: st }); continue; }
       groups = [...roots];   // "Fold", "Bake 55 min", "Let cool": everything so far
     }
     const names = hit.flatMap((i) => keys[i]);
-    const node = { kids: groups, col: Math.max(...groups.map((g) => g.col)) + 1, label: labelOf(st, names), full: st, used: true };
+    const node = { kids: groups, col: Math.max(...groups.map((g) => g.col)) + 1, label: titleOf(st) || labelOf(st, names), full: st, used: true };
     groups.forEach((g) => { g.parent = node; g.used = true; });
     const at = roots.indexOf(groups[0]);
     roots = roots.filter((n) => !groups.includes(n));
     roots.splice(Math.min(at, roots.length), 0, node);
   }
   if (!roots.some((n) => n.leaf === undefined)) return null;   // no step joined anything
+  // ingredients no step names (salt, pepper, a pinch of sugar) are listed under the chart instead of leaving empty rows
+  const also = roots.filter((n) => n.leaf !== undefined).map((n) => ing[n.leaf]);
+  roots = roots.filter((n) => n.leaf === undefined);
   // lay the leaves out so every block covers a run of rows
   const order = [];
   const walk = (n) => { if (n.leaf !== undefined) order.push(n); else n.kids.forEach(walk); };
@@ -103,5 +118,5 @@ export function buildFlow(r) {
     if (to - n.col > 1) cells.push({ row: a, rows: b - a + 1, col: n.col + 1, cols: to - n.col - 1, text: '', kind: 'gap' });
   };
   roots.forEach(place);
-  return { setup, rows: order.map((n) => ing[n.leaf]), cells, cols };
+  return { setup, rows: order.map((n) => ing[n.leaf]), cells, cols, also };
 }
