@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-C5SQ8bc0.js","assets/index-DUN-bkT6.js","assets/index-BMalEmxQ.css"])))=>i.map(i=>d[i]);
+import{n as e,r as t}from"./index-DUN-bkT6.js";var n=e(`LiveActivity`,{web:()=>t(()=>import(`./web-C5SQ8bc0.js`).then(e=>new e.LiveActivityWeb),__vite__mapDeps([0,1,2]))});export{n as LiveActivity};

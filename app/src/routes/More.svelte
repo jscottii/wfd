@@ -18,7 +18,9 @@
   $effect(() => { if (!hhName && currentHousehold()) hhName = currentHousehold().name; });
   const atMax = () => app.households.length >= MAX_HOUSEHOLDS;
   let code = $state(''), codeAsk = $state(false), joinCode = $state(''), joinPeek = $state(null);
-  $effect(() => { if (tab === 'settings' && !code) getJoinCode().then((c) => (code = c)).catch(() => {}); });
+  // the code belongs to the household you're in now; fetch it again whenever that changes
+  let codeFor = '';
+  $effect(() => { const hid = app.household; if (tab === 'settings' && hid && codeFor !== hid) { codeFor = hid; code = ''; getJoinCode(hid).then((c) => { if (app.household === hid) code = c; }).catch(() => {}); } });
   async function copyLink() { try { await navigator.clipboard.writeText(inviteLink(code)); toast('✓ Invite link copied'); } catch { toast(inviteLink(code)); } }
   async function shareLink() {
     const text = `Join our household on WFD (What's for Dinner): ${inviteLink(code)}\nOr enter code ${showCode(code)} in More → Settings.`;
@@ -206,7 +208,7 @@
       </label>
       {#if app.members.length > 1}<p class="small muted">Members: {app.members.map((m) => m.email).join(', ')}</p>{/if}
       {#if app.invites.length}<p class="small muted">Invited: {app.invites.map((i) => i.email).join(', ')} (they join when they sign in)</p>{/if}
-      <h3 style="margin-top:12px">Invite with a link or code</h3>
+      <h3 style="margin-top:12px">Invite people to {currentHousehold()?.name || 'this household'}</h3>
       {#if code}
         <div class="row" style="align-items:center">
           <span style="font:700 26px/1 ui-monospace,Menlo,monospace;letter-spacing:3px;background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 14px">{showCode(code)}</span>
@@ -254,7 +256,7 @@
       {/if}
 
       <h3 style="margin-top:14px">Join with a code</h3>
-      <div class="row"><input class="grow" placeholder="WFD-ABC123" bind:value={joinCode} disabled={atMax()} oninput={() => (joinPeek = null)} style="text-transform:uppercase" />
+      <div class="row"><input class="grow" placeholder="Code someone sent you" bind:value={joinCode} disabled={atMax()} oninput={() => (joinPeek = null)} style="text-transform:uppercase" />
         {#if !joinPeek}<button class="ghost" disabled={atMax() || joinCode.replace(/[^A-Za-z0-9]/g, '').length < 6 || !!hhBusy} onclick={() => hh('peek', async () => { joinPeek = await peekCode(joinCode); })}>Look up</button>
         {:else if joinPeek.already}<span class="small muted">You're already in “{joinPeek.name}”.</span>
         {:else}<button disabled={!!hhBusy} onclick={() => hh('join', () => joinWithCode(joinCode))}>{#if hhBusy === 'join'}<span class="spinner"></span>{/if} Join “{joinPeek.name}”</button>{/if}

@@ -13,7 +13,7 @@
   <div class="row" style="gap:4px">{#each DIETS as d}<button class="chip" class:on={diets.includes(d)} onclick={() => { diets = flip(diets, d); save({ diets }); }}>{diets.includes(d) ? '✓ ' : ''}{d}</button>{/each}</div>
   <p class="small" style="margin:10px 0 4px"><b>Dietary needs</b></p>
   <div class="row" style="gap:4px">{#each HEALTH_DIETS as d}<button class="chip" class:on={diets.includes(d)} onclick={() => { diets = flip(diets, d); save({ diets }); }}>{diets.includes(d) ? '✓ ' : ''}{d}</button>{/each}</div>
-  <p class="note small" style="margin:8px 0 0">ℹ️ WFD isn't medical or nutrition advice. It flags recipes by their ingredients only. If you have diabetes, kidney disease, are pregnant, or have any health concern, please talk with a registered dietitian or your doctor.</p>
+  <p class="note small" style="margin:8px 0 0">ℹ️ WFD isn't medical or nutrition advice. It flags recipes by their ingredients, and nutrition numbers are estimates. If you have diabetes, a heart condition or high blood pressure, kidney disease, are pregnant, or have any health concern, please talk with a registered dietitian or your doctor.</p>
   <p class="small" style="margin:10px 0 4px"><b>Allergies</b></p>
   <div class="row" style="gap:4px">{#each ALLERGENS as a}<button class="chip allergy" class:on={allergies.includes(a)} onclick={() => { allergies = flip(allergies, a); save({ allergies }); }}>{allergies.includes(a) ? '⚠️ ' : ''}{a}</button>{/each}</div>
   <label class="f" style="margin-top:10px">Anything else to avoid? <span class="small muted">(comma separated)</span>

@@ -54,7 +54,7 @@
     </div>
     <div class="card nocollapse">
       <h3 style="margin-top:0">Or join one</h3>
-      <div class="row"><input class="grow" bind:value={fixCode} placeholder="Home code, e.g. WFD-AB12CD" /><button class="ghost" onclick={fixJoin} disabled={fixBusy || !fixCode.trim()}>Join</button></div>
+      <div class="row"><input class="grow" bind:value={fixCode} placeholder="Code someone sent you" /><button class="ghost" onclick={fixJoin} disabled={fixBusy || !fixCode.trim()}>Join</button></div>
     </div>
     <button class="quiet" onclick={() => location.reload()}>Try again</button>
   </div>

@@ -753,8 +753,17 @@ export const clearPendingCode = () => { try { localStorage.removeItem('wfd-join'
 export const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-6);
 export const showCode = (c) => (c ? `WFD-${c}` : '');
 export const inviteLink = (c) => `${APP_URL}#join=${c}`;
-export async function getJoinCode() { const { data, error } = await sb.rpc('get_join_code'); if (error) fail(error); return data; }
-export async function resetJoinCode() { const { data, error } = await sb.rpc('reset_join_code'); if (error) fail(error); return data; }
+/** The code for one household (the current one unless told otherwise). Falls back to the older no-argument version. */
+export async function getJoinCode(hid = app.household) {
+  let { data, error } = await sb.rpc('get_household_code', { hid });
+  if (error && /function|schema cache|not find/i.test(error.message)) ({ data, error } = await sb.rpc('get_join_code'));
+  if (error) fail(error); return data;
+}
+export async function resetJoinCode(hid = app.household) {
+  let { data, error } = await sb.rpc('reset_household_code', { hid });
+  if (error && /function|schema cache|not find/i.test(error.message)) ({ data, error } = await sb.rpc('reset_join_code'));
+  if (error) fail(error); return data;
+}
 export async function peekCode(code) {
   const { data, error } = await sb.rpc('peek_join_code', { code: cleanCode(code) }); if (error) fail(error);
   if (!data) throw new Error("That code doesn't match a household. Check it, or ask for a new one.");
