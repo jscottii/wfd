@@ -13,6 +13,7 @@ const adsense = () => ({ name: 'adsense', transformIndexHtml: () => (ADSENSE_CLI
 // ads.txt: tells ad buyers this publisher ID is allowed to sell ads on this site
 const adsTxt = () => ({ name: 'ads-txt', apply: 'build', generateBundle() { if (ADSENSE_CLIENT) this.emitFile({ type: 'asset', fileName: 'ads.txt', source: `google.com, ${ADSENSE_CLIENT.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n` }); } });
 const ADSENSE_CLIENT = (readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8').match(/ADSENSE_CLIENT = '([^']*)'/) || [])[1] || '';
+const ADSENSE_APPROVED = /ADSENSE_APPROVED = true/.test(readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8'));
 const ADSENSE_SLOT = (readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8').match(/ADSENSE_SLOT = '([^']*)'/) || [])[1] || '';
 // the public website: a home page in index.html (shown until you sign in or start as a guest), plus recipe, guide and about pages
 const publicSite = () => ({
@@ -20,7 +21,7 @@ const publicSite = () => ({
   transformIndexHtml: (html) => html
     .replace('<meta name="robots" content="noindex" />', `<meta name="description" content="Plan the week, shop it in the fewest, cheapest stops, and cook it all at once. Free meal planner with shopping lists priced across your stores." />\n    <link rel="canonical" href="${SITE_URL}" />`)
     .replace('<div id="app"></div>', `<style>${landingCss()}</style>\n    ${landingHtml()}\n    <div id="app"></div>`),
-  generateBundle() { for (const [fileName, source] of publicFiles({ site: SITE_URL, ads: { client: ADSENSE_CLIENT, slot: ADSENSE_SLOT } })) this.emitFile({ type: 'asset', fileName, source }); },
+  generateBundle() { for (const [fileName, source] of publicFiles({ site: SITE_URL, ads: { client: ADSENSE_CLIENT, slot: ADSENSE_APPROVED ? ADSENSE_SLOT : '' } })) this.emitFile({ type: 'asset', fileName, source }); },
 });
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const built = new Date().toISOString().slice(0, 10);

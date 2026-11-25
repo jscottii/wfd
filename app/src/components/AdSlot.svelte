@@ -1,12 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { app, track } from '../lib/db.svelte.js';
-  import { ADSENSE_CLIENT, ADSENSE_SLOT } from '../lib/config.js';
+  import { ADSENSE_CLIENT, ADSENSE_SLOT, ADSENSE_APPROVED } from '../lib/config.js';
   import { isNative } from '../lib/native.js';
   // An ad space (planning, shopping and cooking screens). Never for WFD Plus members.
   // Live when AdSense IDs are set; otherwise admins can switch on "preview ad slots" to see where ads go.
   let { slot = 'banner', format = 'banner' } = $props();   // format: banner (wide strip) | native (looks like a list row) | rect (300×250 box)
-  const live = $derived(!!ADSENSE_CLIENT && !!ADSENSE_SLOT && !app.plus && !isNative());
+  const live = $derived(ADSENSE_APPROVED && !!ADSENSE_CLIENT && !!ADSENSE_SLOT && !app.plus && !isNative());
   const preview = $derived(!live && !app.plus && !!app.settings.adPreview && app.isAdmin);
   const SAMPLES = {
     banner: { brand: 'FreshCo Market', head: '20% off produce this week', cta: 'Shop deals', art: '🥬🍅🥕' },

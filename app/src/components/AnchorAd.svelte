@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { app, track } from '../lib/db.svelte.js';
-  import { ADSENSE_CLIENT, ADSENSE_SLOT, ADSENSE_ANCHOR_SLOT } from '../lib/config.js';
+  import { ADSENSE_CLIENT, ADSENSE_SLOT, ADSENSE_ANCHOR_SLOT, ADSENSE_APPROVED } from '../lib/config.js';
   import { isNative } from '../lib/native.js';
   import { showNativeBanner, hideNativeBanner } from '../lib/ads.js';
   // The always-visible ad: a slim banner pinned just above the tab bar on the planning, shopping and pantry screens.
@@ -11,7 +11,7 @@
   let closed = $state((() => { try { return sessionStorage.getItem('wfd-anchor-closed') === '1'; } catch { return false; } })());
   const slotId = ADSENSE_ANCHOR_SLOT || ADSENSE_SLOT;
   const eligible = $derived(!app.plus && !closed && PAGES.includes(page));
-  const webLive = $derived(eligible && !isNative() && !!ADSENSE_CLIENT && !!slotId);
+  const webLive = $derived(ADSENSE_APPROVED && eligible && !isNative() && !!ADSENSE_CLIENT && !!slotId);
   const preview = $derived(eligible && !webLive && !isNative() && !!app.settings.adPreview && app.isAdmin);
   const shown = $derived(webLive || preview);
   $effect(() => { document.body.classList.toggle('with-anchor', shown || (isNative() && eligible)); return () => document.body.classList.remove('with-anchor'); });

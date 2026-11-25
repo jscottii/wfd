@@ -8,6 +8,8 @@ export const APP_URL = __SITE_URL__;
 // ---- Ads & WFD Plus (all off until filled in) ----
 // Web ads: your Google AdSense publisher ID (ca-pub-…) and one display ad slot ID.
 export const ADSENSE_CLIENT = 'ca-pub-1112889265122999';
+// Flip to true once AdSense approves wfdmeals.app. Until then no ad spaces are shown (the site code and ads.txt stay, for the review).
+export const ADSENSE_APPROVED = false;
 export const ADSENSE_SLOT = '9069070065';
 // Optional: a separate AdSense slot for the pinned banner above the tab bar (falls back to ADSENSE_SLOT).
 export const ADSENSE_ANCHOR_SLOT = '9799250694';

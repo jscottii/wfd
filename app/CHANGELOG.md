@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.18.1 — Nov 25, 2026
+- Ad spaces are hidden until Google approves the site, so there are no empty boxes in the app or on the website.
+
 ## 1.18.0 — Nov 25, 2026
 - wfdmeals.app now opens on a home page that shows what WFD does, with recipes and guides anyone can read. Signed-in people still go straight to the app.
 - New recipes and guides written for WFD, each recipe with estimated nutrition and a flow chart.
