@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.9.0 — Nov 24, 2026
+- Tap your household's name at the top to switch households or start a new one, without going into Settings. The name now shows even if you're in just one household.
+
 ## 1.8.0 — Nov 24, 2026
 - Pull down from the top of any screen to refresh: it installs a newer version of the app if there is one, otherwise it fetches the latest plans, lists, recipes and pantry.
 

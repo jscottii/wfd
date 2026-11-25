@@ -23,6 +23,8 @@
   import AnchorAd from './components/AnchorAd.svelte';
   import SiteFooter from './components/SiteFooter.svelte';
   import PullRefresh from './components/PullRefresh.svelte';
+  import HouseholdPicker from './components/HouseholdPicker.svelte';
+  let hhOpen = $state(false);
   import WhatsNew from './components/WhatsNew.svelte';
   // after an update, once: what changed (first-ever open just records the version)
   let showNew = $state((() => { try { let v = localStorage.getItem('wfd-seen-version'); if (!v) { const existing = Object.keys(localStorage).some((k) => /^mp-|auth-token/.test(k)); if (!existing) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } v = '1.4.1'; localStorage.setItem('wfd-seen-version', v); } return v !== __APP_VERSION__; } catch { return false; } })());
@@ -63,9 +65,9 @@
   </div>
 {:else}
   <TimerDock />
-  {#if app.households.length > 1 || app.myInvites.length}
+  {#if app.households.length || app.myInvites.length}
     <div class="hhbar">
-      {#if app.households.length > 1}<button class="quiet" onclick={() => { sessionStorage.setItem('mp-more-tab', 'settings'); go('more'); }}>🏠 {currentHousehold()?.name}</button>{/if}
+      {#if app.households.length}<button class="quiet" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}
       {#if app.myInvites.length}<button class="quiet" onclick={() => { sessionStorage.setItem('mp-more-tab', 'settings'); go('more'); }}>✉️ {app.myInvites.length === 1 ? `${app.myInvites[0].name} invited you` : `${app.myInvites.length} household invites`} →</button>{/if}
     </div>
   {/if}
@@ -102,8 +104,9 @@
   {/if}
   <AnchorAd {page} />
   <PullRefresh />
+  {#if hhOpen}<HouseholdPicker {go} onclose={() => (hhOpen = false)} />{/if}
   <nav class="tabs">
-    <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length > 1}<button class="hh" onclick={() => { sessionStorage.setItem('mp-more-tab', 'settings'); go('more'); }}>🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
+    <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length}<button class="hh" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
     {#each TABS as [k, ic, label]}<button class:on={page === k} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
   </nav>
 {/if}
