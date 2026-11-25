@@ -32,7 +32,7 @@
   let showOnboard = $state(false), onboardDismissed = $state(false);
   $effect(() => { if (app.ready && app.household && app.session && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
 
-  const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['more', '☰', 'More']];
+  const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['recipes', '📖', 'Recipes'], ['more', '☰', 'More']];
   const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices', 'admin'];
   let page = $state(PAGES.includes((location.hash || '').slice(1)) ? location.hash.slice(1) : 'plan');
   function go(p) { page = p; history.replaceState(null, '', '#' + p); window.scrollTo(0, 0); }

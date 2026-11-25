@@ -16,17 +16,25 @@
 
   const have = (title) => app.recipes.some((r) => r.title.toLowerCase() === String(title).toLowerCase());
 
+  // only the newest search gets to show its results; earlier ones that finish late are ignored
+  let seq = 0, wait = 0, sitesBusy = $state(false);
   async function look() {
-    err = ''; busy = 'look'; sites = [];
+    const my = ++seq, s = q.trim();
+    err = ''; busy = 'look';
+    if (s) { sites = []; sitesBusy = true; callProxy({ action: 'recipe-search', q: s }).then((r) => { if (my === seq) sites = r.results || []; }).catch(() => {}).finally(() => { if (my === seq) sitesBusy = false; }); }
+    else { sites = []; sitesBusy = false; }
     try {
-      const s = q.trim();
-      ideas = await findIdeas({ cuisines: s ? [] : pick.cuisines, types: s ? [] : pick.types, search: s });
-      if (s) callProxy({ action: 'recipe-search', q: s }).then((r) => (sites = r.results || [])).catch(() => {});
-      if (!ideas.length && !s) err = 'Nothing matches that mix — try unpicking something.';
-    } catch (e) { err = e.message; }
-    busy = '';
+      const found = await findIdeas({ cuisines: s ? [] : pick.cuisines, types: s ? [] : pick.types, search: s });
+      if (my !== seq) return;
+      ideas = found;
+      if (!found.length) err = s ? `No recipes called “${s}” in the free collection — web results below, or try one word like “chicken”.` : 'Nothing matches that mix — try unpicking something.';
+    } catch (e) { if (my === seq) err = e.message; }
+    if (my === seq) busy = '';
   }
-  $effect(() => { JSON.stringify(pick); if (!q) untrack(look); });
+  // chips: look again a moment after the last tap; typing: search as you type (3+ letters)
+  const soon = (ms) => { clearTimeout(wait); wait = setTimeout(look, ms); };
+  $effect(() => { JSON.stringify(pick); if (!untrack(() => q)) untrack(() => soon(250)); });
+  $effect(() => { const s = q.trim(); if (s.length >= 3) untrack(() => soon(450)); else if (!s) untrack(() => soon(0)); });
 
   function toggle(kind, v) { if (held) { held = false; return; } q = ''; const a = pick[kind]; pick[kind] = a.includes(v) ? a.filter((x) => x !== v) : [...a, v]; }
   function heart(kind, v) {
@@ -71,8 +79,8 @@
   <p class="small" style="margin:10px 0 4px"><b>Meal type</b></p>
   <div class="chips">{#each MEAL_TYPES as [t]}{@render chip('types', t)}{/each}</div>
 
-  <form class="row" style="margin-top:10px;gap:6px" onsubmit={(e) => { e.preventDefault(); look(); }}>
-    <input placeholder="Search: tacos, curry, chili…" bind:value={q} style="flex:1;min-width:160px" />
+  <form class="row" style="margin-top:10px;gap:6px" onsubmit={(e) => { e.preventDefault(); clearTimeout(wait); look(); }}>
+    <input type="search" enterkeyhint="search" placeholder="Search by dish or ingredient: tacos, salmon, curry…" bind:value={q} style="flex:1;min-width:160px" />
     <button disabled={!q.trim() || busy === 'look'}>{#if busy === 'look'}<span class="spinner"></span>{/if} Search</button>
   </form>
   <form class="row" style="margin-top:6px;gap:6px" onsubmit={(e) => { e.preventDefault(); if (link.trim()) addLink(link.trim()); }}>
@@ -81,7 +89,7 @@
   </form>
   {#if onbm}<p class="small" style="margin:6px 0 0"><button class="quiet" onclick={onbm}>Bring in a full week of meals →</button></p>{/if}
 
-  {#if busy === 'look' && !ideas.length}<p class="small muted"><span class="spinner"></span> Looking…</p>{/if}
+  {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking…</p>{:else if q.trim() && ideas.length}<p class="small muted" style="margin:8px 0 0">{ideas.length} recipe{ideas.length === 1 ? '' : 's'} for “{q.trim()}”</p>{/if}
   <div class="ideas">
     {#each ideas.slice(0, 24) as i, n (i.id)}
       {#if n === 4}<div style="grid-column:1/-1"><AdSlot slot="find-recipes" format="native" /></div>{/if}
@@ -92,6 +100,7 @@
         {:else}<button class="ghost" style="padding:6px 10px" onclick={() => addIdea(i)} disabled={!!busy} aria-label="Save recipe">{#if busy === i.id}<span class="spinner"></span>{:else}+{/if}</button>{/if}
       </div>
     {/each}
+    {#if sites.length || sitesBusy}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">From recipe websites {#if sitesBusy}<span class="spinner"></span>{/if}</p>{/if}
     {#each sites as s (s.url)}
       <div class="idea">
         <div class="noimg">🍽️</div>

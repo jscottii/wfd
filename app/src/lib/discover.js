@@ -71,10 +71,40 @@ export function fromJsonLd(r, url) {
     image: (() => { const im = Array.isArray(r.image) ? r.image[0] : r.image; return typeof im === 'string' ? im : im?.url || ''; })() });
 }
 
-const get = (path) => fetch(MEALDB + path).then((r) => { if (!r.ok) throw new Error('The recipe finder is busy — try again in a moment.'); return r.json(); });
+// every answer is kept for 6 hours (and shared by requests already on the way), so tapping chips back and forth is instant
+const cache = new Map();
+const get = (path) => {
+  const hit = cache.get(path);
+  if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.p;
+  const p = fetch(MEALDB + path).then((r) => { if (!r.ok) throw new Error('The recipe finder is busy — try again in a moment.'); return r.json(); });
+  p.catch(() => cache.delete(path));
+  cache.set(path, { at: Date.now(), p });
+  return p;
+};
+const singular = (w) => w.replace(/ies$/, 'y').replace(/(ch|sh|x|s|o)es$/, '$1').replace(/([^s])s$/, '$1');
+/** Search by recipe name, by each word, and by ingredient ("chicken", "tacos", "beef chili"), best matches first. */
+async function searchIdeas(search) {
+  const q = search.toLowerCase().trim().replace(/\s+/g, ' ');
+  const words = q.split(' ').filter((w) => w.length > 2 && !/^(and|with|the|for|easy|best|recipe|recipes)$/.test(w));
+  const names = [...new Set([q, singular(q), ...words, ...words.map(singular)])];
+  const ingr = [...new Set([words.join('_'), ...words.map(singular)])].filter(Boolean);
+  const cuisine = CUISINES.find(([c]) => c.toLowerCase() === q || c.toLowerCase() === singular(q));
+  const type = MEAL_TYPES.find(([t]) => t.toLowerCase() === q || t.toLowerCase() === singular(q));
+  const pull = (path, how) => get(path).then((j) => (j.meals || []).map((m) => ({ m, how }))).catch(() => []);
+  const lists = await Promise.all([
+    ...names.map((n) => pull(`/search.php?s=${encodeURIComponent(n)}`, 'name')),
+    ...ingr.map((i) => pull(`/filter.php?i=${encodeURIComponent(i)}`, 'ingredient')),
+    ...(cuisine ? cuisine[1].map((a) => pull(`/filter.php?a=${encodeURIComponent(a)}`, 'cuisine')) : []),
+    ...(type ? [pull(`/filter.php?c=${encodeURIComponent(type[1])}`, 'type')] : []),
+  ]);
+  const score = (m, how) => { const t = m.strMeal.toLowerCase(); return (t.includes(q) || t.includes(singular(q)) ? 100 : 0) + words.filter((w) => t.includes(singular(w))).length * 20 + (how === 'name' ? 10 : how === 'ingredient' ? 5 : 0); };
+  const best = new Map();
+  for (const { m, how } of lists.flat()) { const sc = score(m, how); if (!best.has(m.idMeal) || best.get(m.idMeal).sc < sc) best.set(m.idMeal, { m, sc }); }
+  return [...best.values()].sort((a, b) => b.sc - a.sc).map(({ m }) => shape(m));
+}
 /** Recipe ideas for any of the cuisines, any of the meal types, or a search: [{id, title, thumb, area}] */
 export async function findIdeas({ cuisines = [], types = [], search = '' }) {
-  if (search) return ((await get(`/search.php?s=${encodeURIComponent(search)}`)).meals || []).map(shape);
+  if (search) return searchIdeas(search);
   const areas = cuisines.flatMap((c) => (CUISINES.find((x) => x[0] === c) || [c, [c]])[1]);
   const cats = types.map((t) => (MEAL_TYPES.find((x) => x[0] === t) || [t, t])[1]).filter(Boolean);
   const pull = (path, extra = {}) => get(path).then((j) => (j.meals || []).map((m) => ({ ...m, ...extra }))).catch(() => []);

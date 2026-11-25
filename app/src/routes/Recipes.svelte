@@ -8,6 +8,9 @@
   import FindRecipes from '../components/FindRecipes.svelte';
   import Onboarding from '../components/Onboarding.svelte';
   let starter = $state(false);
+  // two views: your saved recipes, and finding new ones
+  let view = $state((() => { try { return sessionStorage.getItem('mp-rec-view') || 'mine'; } catch { return 'mine'; } })());
+  const setView = (v) => { view = v; finding = false; try { sessionStorage.setItem('mp-rec-view', v); } catch {} };
   let { go } = $props();
   let adding = $state(false), link = $state(''), linkBusy = $state(false), linkErr = $state(''), finding = $state(false);
   async function fromLink(e) { e.preventDefault(); linkBusy = true; linkErr = ''; try { const [r] = await importRecipeUrl(link.trim()); link = ''; adding = false; open = r.id; toast(`✓ ${r.title} saved`); } catch (x) { linkErr = x.message; } linkBusy = false; }
@@ -66,7 +69,12 @@
     </div>
     <div class="row"><button onclick={save} disabled={busy}>{#if busy}<span class="spinner"></span>{/if} Save recipe</button><button class="ghost" onclick={() => (editing = null)}>Cancel</button></div>
   {:else}
-    <div class="spread"><h1>Saved recipes</h1><button onclick={() => (adding = !adding)}>+ New</button></div>
+    <div class="spread"><h1>Recipes</h1>{#if view === 'mine'}<button onclick={() => (adding = !adding)}>+ New</button>{/if}</div>
+    <div class="seg" style="margin:0 0 10px">
+      <button class:on={view === 'mine'} onclick={() => setView('mine')}>📖 My recipes ({app.recipes.length})</button>
+      <button class:on={view === 'find'} onclick={() => setView('find')}>🔎 Find new</button>
+    </div>
+    {#if view === 'find'}<FindRecipes onadd={() => {}} />{:else}
     {#if adding}
       <div class="card nocollapse">
         <h3 style="margin-top:0">Add a recipe</h3>
@@ -76,7 +84,7 @@
         </form>
         {#if linkErr}<div class="err small">⚠️ {linkErr}</div>{/if}
         <p class="small muted" style="margin:8px 0">The app pulls in the ingredients, steps and shopping items for you.</p>
-        <div class="row"><button class="ghost" onclick={() => { adding = false; edit(null); }}>✏️ Type one in</button><button class="ghost" onclick={() => { adding = false; finding = true; }}>🔎 Find recipes</button><button class="ghost" onclick={() => { adding = false; starter = true; }}>✨ 15 meals from my favorite cuisines</button></div>
+        <div class="row"><button class="ghost" onclick={() => { adding = false; edit(null); }}>✏️ Type one in</button><button class="ghost" onclick={() => { adding = false; setView('find'); }}>🔎 Find recipes</button><button class="ghost" onclick={() => { adding = false; starter = true; }}>✨ 15 meals from my favorite cuisines</button></div>
       </div>
     {/if}
     {#if finding}<FindRecipes onclose={() => (finding = false)} />{/if}
@@ -106,5 +114,6 @@
         {/if}
       {/each}
     </div>
+    {/if}
   {/if}
 </div>
