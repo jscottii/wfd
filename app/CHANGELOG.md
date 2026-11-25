@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.16.2 — Nov 25, 2026
+- Connected the site to Google AdSense (waiting for Google's review; no ads show yet).
+
 ## 1.16.1 — Nov 25, 2026
 - You can now email us at support@wfdmeals.app (listed on the Help and Privacy pages).
 

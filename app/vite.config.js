@@ -7,6 +7,11 @@ const site = new URL(SITE_URL);
 const BASE = site.pathname.endsWith('/') ? site.pathname : site.pathname + '/';
 // on your own domain, GitHub Pages needs a CNAME file naming it
 const cname = () => ({ name: 'cname', apply: 'build', generateBundle() { if (!/github\.io$/.test(site.hostname)) this.emitFile({ type: 'asset', fileName: 'CNAME', source: site.hostname + '\n' }); } });
+// AdSense's site check looks for its script in the page <head> (web only: ads inside the phone app are AdMob's job)
+const adsense = () => ({ name: 'adsense', transformIndexHtml: () => (ADSENSE_CLIENT ? [{ tag: 'script', attrs: { async: true, src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`, crossorigin: 'anonymous', 'data-adsense': '1' }, injectTo: 'head' }] : []) });
+// ads.txt: tells ad buyers this publisher ID is allowed to sell ads on this site
+const adsTxt = () => ({ name: 'ads-txt', apply: 'build', generateBundle() { if (ADSENSE_CLIENT) this.emitFile({ type: 'asset', fileName: 'ads.txt', source: `google.com, ${ADSENSE_CLIENT.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n` }); } });
+const ADSENSE_CLIENT = (readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8').match(/ADSENSE_CLIENT = '([^']*)'/) || [])[1] || '';
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const built = new Date().toISOString().slice(0, 10);
 // the newest changelog entries, for the in-app "What's new" screen
@@ -24,6 +29,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
     mode !== 'native' && cname(),
+    mode !== 'native' && adsense(),
+    mode !== 'native' && adsTxt(),
     mode !== 'native' && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],

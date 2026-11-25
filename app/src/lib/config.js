@@ -7,7 +7,7 @@ export const APP_URL = __SITE_URL__;
 
 // ---- Ads & WFD Plus (all off until filled in) ----
 // Web ads: your Google AdSense publisher ID (ca-pub-…) and one display ad slot ID.
-export const ADSENSE_CLIENT = '';
+export const ADSENSE_CLIENT = 'ca-pub-1112889265122999';
 export const ADSENSE_SLOT = '';
 // Optional: a separate AdSense slot for the pinned banner above the tab bar (falls back to ADSENSE_SLOT).
 export const ADSENSE_ANCHOR_SLOT = '';
