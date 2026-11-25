@@ -5,6 +5,9 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.8.0 — Nov 24, 2026
+- Pull down from the top of any screen to refresh: it installs a newer version of the app if there is one, otherwise it fetches the latest plans, lists, recipes and pantry.
+
 ## 1.7.1 — Nov 24, 2026
 - The floating cart button no longer shows on More / Settings.
 

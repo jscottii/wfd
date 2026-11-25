@@ -22,6 +22,7 @@
   import Onboarding from './components/Onboarding.svelte';
   import AnchorAd from './components/AnchorAd.svelte';
   import SiteFooter from './components/SiteFooter.svelte';
+  import PullRefresh from './components/PullRefresh.svelte';
   import WhatsNew from './components/WhatsNew.svelte';
   // after an update, once: what changed (first-ever open just records the version)
   let showNew = $state((() => { try { let v = localStorage.getItem('wfd-seen-version'); if (!v) { const existing = Object.keys(localStorage).some((k) => /^mp-|auth-token/.test(k)); if (!existing) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } v = '1.4.1'; localStorage.setItem('wfd-seen-version', v); } return v !== __APP_VERSION__; } catch { return false; } })());
@@ -100,6 +101,7 @@
     </div>
   {/if}
   <AnchorAd {page} />
+  <PullRefresh />
   <nav class="tabs">
     <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length > 1}<button class="hh" onclick={() => { sessionStorage.setItem('mp-more-tab', 'settings'); go('more'); }}>🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
     {#each TABS as [k, ic, label]}<button class:on={page === k} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}

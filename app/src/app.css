@@ -220,3 +220,6 @@ body.with-anchor { padding-bottom: calc(var(--nav) + 58px + env(safe-area-inset-
 body.with-anchor .cart-fab { bottom: calc(var(--nav) + 58px + env(safe-area-inset-bottom) + 14px); }
 body.with-anchor .toast { bottom: calc(var(--nav) + 72px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body.with-anchor .cart-fab { bottom: 82px; } }
+
+/* our own pull-to-refresh replaces the browser's (which would reload without getting a new version) */
+html, body { overscroll-behavior-y: none; }
