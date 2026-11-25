@@ -16,6 +16,7 @@
   import AdSlot from '../components/AdSlot.svelte';
   import { enableUpdates, sendUpdate, notifyStatus } from '../lib/notify.js';
   import { liveCookDay, endCookDay } from '../lib/live.js';
+  import MealFacts from '../components/MealFacts.svelte';
   let { go } = $props();
 
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -337,6 +338,7 @@
   {@const k = kOf[r.id] || 1}
   <div class="card">
     <div class="row" style="gap:10px;align-items:center;flex-wrap:nowrap"><Dish {r} size={64} /><h3 style="margin:0">{r.title} <span class="pill" class:acc={k !== 1}>{times(k)}</span></h3></div>
+    <MealFacts {r} compact />
     {#if k !== 1}<p class="small muted" style="margin:0 0 6px">Amounts below are already {k === 0.5 ? 'halved' : `multiplied by ${k}`}.</p>{/if}
     {#if r.ing.length}
       <p class="small muted" style="margin:6px 0 2px">Ingredients</p>

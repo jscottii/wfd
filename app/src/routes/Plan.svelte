@@ -4,6 +4,8 @@
   import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
   import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
+  import { caloriesOf, nutritionOf } from '../lib/nutrition.js';
+  import MealFacts from '../components/MealFacts.svelte';
   import Dish from '../components/Dish.svelte';
   const prefs = $derived(prefsOf(app.settings));
   const clash = (r) => conflicts(r, prefs);
@@ -43,7 +45,7 @@
   function toggleMeal(m) { const has = shape.meals.includes(m); if (has && shape.meals.length === 1) return; reshape({ meals: has ? shape.meals.filter((x) => x !== m) : ['breakfast', 'lunch', 'dinner'].filter((x) => x === m || shape.meals.includes(x)) }); }
   const D3 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   let goalOn = $state(!!app.settings.calorieGoal), goal = $state(app.settings.calorieGoal || 600);
-  const cal = (r) => Number(r.calories) || 0;
+  const cal = (r) => caloriesOf(r);
 
   // working copy of the plan
   const onPlan = new Set(); (app.plan.days || []).forEach((d) => SLOTS.forEach((s) => d[s] && onPlan.add(d[s])));
@@ -290,8 +292,9 @@
       <p class="small muted" style="margin:4px 0 10px">We spread your recipes out — tap any meal to change it. <span class="pill">leftovers</span> means you cooked it earlier in the week.</p>
       <div class="week">
         {#each days.slice(shape.from, shape.to + 1) as d, di}
+          {@const dayN = [...shape.meals, ...(shape.snack ? ['snack'] : [])].map((m) => (d[m] ? recipeById(d[m]) : null)).filter(Boolean).map((r) => nutritionOf(r)).filter((n) => n?.ok)}
           <div class="wday">
-            <div class="wday-name">{d.day.slice(0, 3)}</div>
+            <div class="wday-name">{d.day.slice(0, 3)}{#if dayN.length}<span class="wday-tot" title="Estimated, one serving of each meal">{dayN.reduce((a, n) => a + n.kcal, 0)} cal<br>{dayN.reduce((a, n) => a + n.protein, 0)}g protein</span>{/if}</div>
             <div class="wslots">
               {#each [...shape.meals, ...(shape.snack ? ['snack'] : [])] as m}
                 {@const r = d[m] ? recipeById(d[m]) : null}
@@ -299,7 +302,7 @@
                 <button class="wslot" class:empty={!r} onclick={() => (slotPick = { day: d.day, meal: m })}>
                   <span class="small muted wmeal">{m[0].toUpperCase() + m.slice(1)}</span>
                   {#if r}
-                    <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}</span></span>
+                    <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}{#if nutritionOf(r)?.ok}{@const n = nutritionOf(r)}<span class="wmac">{n.kcal} cal · {n.protein}P {n.carbs}C {n.fat}F</span>{/if}</span></span>
                   {:else}<span class="small muted">— eating out / nothing</span>{/if}
                 </button>
               {/each}
@@ -316,7 +319,7 @@
         <h3 style="margin:0 0 8px">{slotPick.day} · {slotPick.meal}</h3>
         {#each opts(slotPick.meal).length ? opts(slotPick.meal) : picked as r (r.id)}
           <button class="sheet-row" class:on={sd[slotPick.meal] === r.id} onclick={() => { sd[slotPick.meal] = r.id; manual = true; slotPick = null; }}>
-            <Dish {r} size={44} round={8} /><span class="grow"><b>{short(r)}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</span>{#if clash(r).any}<br><span class="warn small">⚠️ check ingredients</span>{/if}</span>
+            <Dish {r} size={44} round={8} /><span class="grow"><b>{short(r)}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</span><br><MealFacts {r} compact /></span>
           </button>
         {/each}
         <button class="sheet-row" class:on={!sd[slotPick.meal]} onclick={() => { sd[slotPick.meal] = ''; manual = true; slotPick = null; }}><span style="font-size:24px">🍴</span><span class="grow"><b>Eating out / nothing</b></span></button>
@@ -338,6 +341,8 @@
 </div>
 
 <style>
+  .wday-tot { display: block; font-size: 10px; font-weight: 500; color: var(--muted); line-height: 1.25; margin-top: 4px; text-transform: none; }
+  .wmac { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
   .pan-pick { margin: 10px 0; padding: 10px; border-radius: 12px; background: var(--accent-soft); }
   .pan-pick .cnt { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
   .pan-pick .soon { font-size: 10px; color: #b45309; font-weight: 700; }

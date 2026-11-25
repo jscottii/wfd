@@ -31,7 +31,7 @@ export async function planTrip() {
     const items = app.items.filter((i) => n[i.id] > 0 && !owned(i));
     if (!items.length) { trip.result = { empty: true }; return; }
     const enabled = (Array.isArray(s.enabledStores) ? s.enabledStores : String(s.enabledStores || '').split(',')).map((x) => x.trim()).filter(Boolean);
-    const stores = app.stores.filter((st) => st.enabled !== false && enabled.includes(st.id) && (!st.bulk || s.costcoMember));
+    const stores = app.stores.filter((st) => st.enabled !== false && !!st.address && enabled.includes(st.id) && (!st.bulk || s.costcoMember));
     const start = startAddress(), home = s.homeAddress;
     const nm = await nearestAndMatrix(start, home, stores, s.nearestStores !== false, (t) => (trip.step = t));
     trip.geo = nm.start; trip.stores = nm.stores;

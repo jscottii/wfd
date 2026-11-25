@@ -2,9 +2,9 @@
   import { untrack } from 'svelte';
   import { app, saveSettings, importRecipes, importRecipeUrl, callProxy, toast } from '../lib/db.svelte.js';
   import { CUISINES, MEAL_TYPES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
-  import { conflicts, prefsOf } from '../lib/diet.js';
+  import { conflicts, conflictText, prefsOf } from '../lib/diet.js';
   import AdSlot from './AdSlot.svelte';
-  const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${[...c.allergens.map((a) => 'contains ' + a.toLowerCase()), ...c.diets, ...c.avoid.map((a) => 'has ' + a)].join(', ')}` : ''; };
+  const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${conflictText(c)}` : ''; };
   // onadd(recipe) — called for each recipe added (e.g. to drop it into a week); onbm — open the Bare Minimum weeks
   let { onadd = null, onbm = null, onclose = null } = $props();
 

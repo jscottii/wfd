@@ -2,8 +2,8 @@
   import Dish from '../components/Dish.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import { conflicts, prefsOf } from '../lib/diet.js';
+  import MealFacts from '../components/MealFacts.svelte';
   const prefs = $derived(prefsOf(app.settings));
-  const warnText = (r) => { const c = conflicts(r, prefs); return [...c.allergens.map((a) => `contains ${a.toLowerCase()}`), ...c.diets, ...c.avoid.map((a) => `has ${a}`)].join(' · '); };
   import { app, portions, itemById, setRecipeActive, saveRecipe, deleteRecipe, importRecipeUrl, toast } from '../lib/db.svelte.js';
   import FindRecipes from '../components/FindRecipes.svelte';
   import Onboarding from '../components/Onboarding.svelte';
@@ -88,13 +88,14 @@
         <div class="list-row">
           <button class="quiet grow" style="text-align:left;justify-content:flex-start;color:var(--ink);padding:0;display:flex;gap:10px;align-items:center" onclick={() => (open = open === r.id ? null : r.id)}>
             <Dish {r} size={52} />
-            <span class="grow"><b>{r.title}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''} · makes {r.servings || '?'}{r.calories ? ` · ${r.calories} cal` : ''}{por[r.id] ? ` · this week ${por[r.id].portions} portions (${por[r.id].scale}×)` : ''}</span>
-              {#if conflicts(r, prefs).any}<br><span class="warn small">⚠️ {warnText(r)}</span>{/if}</span>
+            <span class="grow"><b>{r.title}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''} · makes {r.servings || '?'}{por[r.id] ? ` · this week ${por[r.id].portions} portions (${por[r.id].scale}×)` : ''}</span>
+              <br><MealFacts {r} compact /></span>
           </button>
           <label class="switch" title="Shop for this recipe"><input type="checkbox" checked={r.active} onchange={(e) => setRecipeActive(r.id, e.currentTarget.checked).catch((er) => toast(er.message))} /><span></span></label>
         </div>
         {#if open === r.id}
           <div style="padding:4px 0 14px">
+            <MealFacts {r} />
             {#if r.tip}<p class="small muted">{r.tip}</p>{/if}
             <h3>Ingredients</h3><ul class="small">{#each r.ing as x}<li>{x}</li>{/each}</ul>
             {#if r.steps.length}<h3>Steps</h3><ol class="small">{#each r.steps as x}<li>{x}</li>{/each}</ol>{/if}

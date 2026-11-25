@@ -5,6 +5,11 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.6.0 — Nov 24, 2026
+- Nutrition for every meal: estimated calories, protein, carbs and fat per serving, worked out from the ingredients. Shown on saved recipes, the meal picker, each meal and day total in the week plan, and the Prep recipe cards.
+- Clearer diet and allergy checks: each recipe now says exactly which ingredient doesn't fit ("Not Low-FODMAP — garlic, onion"), and shows a ✓ for the diets it does fit. Look-alikes no longer trip the checks (garlic-infused oil, lactose-free milk, green beans, butternut squash, almond flour, a bunch of cilantro). Keto, low-carb, low-fat and high-protein are judged from the nutrition numbers instead of word lists.
+- Starter stores are now plain chains (no addresses); your home address finds the real ones near you.
+
 ## 1.5.3 — Nov 23, 2026
 - The example household name is now "Smith Family".
 

@@ -109,7 +109,7 @@
     <p class="muted small">{app.settings.nearestStores !== false ? 'Each chain uses its location nearest to where your trip starts.' : 'Using the addresses below.'} Turn a store off to leave it out of trips.</p>
     <div class="card">
       <div class="spread"><b>Stores near {app.settings.homeAddress.split(',')[0]}</b><button class="ghost" onclick={findLocal} disabled={!!localBusy}>{#if localBusy === 'find'}<span class="spinner"></span>{/if} Find stores near me</button></div>
-      <p class="small muted" style="margin:4px 0">Moved, or not in the Bay Area? This finds the grocery chains around your home address (change it in Settings).</p>
+      <p class="small muted" style="margin:4px 0">Moved? This finds the grocery chains around your home address (change it in Settings).</p>
       {#if localErr}<div class="err">⚠️ {localErr}</div>{/if}
       {#if local}
         {#each local as b (b.brand)}

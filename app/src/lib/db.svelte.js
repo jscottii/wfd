@@ -11,7 +11,7 @@ export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persis
 
 export const DEFAULT_SETTINGS = {
   audience: 'household', units: 'imperial', storeRadius: 25, homeAddress: HOME_DEFAULT, mpg: 28, gasPrice: 5.6, timeValue: 5, stopMinutes: 12, maxStores: 3,
-  costcoMember: false, costcoMode: 'pack', enabledStores: ['sbf', 'tj', 'tgt', 'lucky', 'raleys', 'costco'],
+  costcoMember: false, costcoMode: 'pack', enabledStores: ['sbf', 'tj', 'tgt', 'costco'],
   householdSize: 3, nearestStores: true, serpMonthlyLimit: 230, serpLocation: '', pantry: PANTRY_CHECK, sourceUrl: SOURCE_URL
 };
 
@@ -180,7 +180,8 @@ async function seedHousehold() {
     hours: s.hours, ad: s.ad, bulk: !!s.bulk, enabled: s.enabled !== false, sort: i }));
   const items = ITEMS_SEED.map((x) => ({ id: x[0], cat: x[1], name: x[2], qty: x[3], q: x[5], must: x[6], units: x[7] }));
   const prices = [];
-  ITEMS_SEED.forEach((x) => Object.entries(x[8]).forEach(([sid, v]) => {
+  const sids = new Set(STORES_SEED.map((s) => s.id));
+  ITEMS_SEED.forEach((x) => Object.entries(x[8]).filter(([sid]) => sids.has(sid)).forEach(([sid, v]) => {
     const arr = Array.isArray(v);
     prices.push({ item_id: x[0], store_id: sid, price: arr ? v[0] : v, unit_needed: arr ? v[2] : null, matched: arr ? v[1] : null, source: 'estimate' });
   }));
@@ -604,8 +605,8 @@ let serpLoc = null;
 async function serpLocation(geo) {
   if (app.settings.serpLocation) return app.settings.serpLocation;
   if (serpLoc) return serpLoc;
-  try { serpLoc = (await callProxy({ action: 'serp-location', city: geo?.city || 'Alameda', state: geo?.state || 'California' })).location; }
-  catch (_) { serpLoc = 'California, United States'; }
+  try { serpLoc = (await callProxy({ action: 'serp-location', city: geo?.city || '', state: geo?.state || '' })).location; }
+  catch (_) { serpLoc = 'United States'; }
   return serpLoc;
 }
 
@@ -782,6 +783,11 @@ export async function invite(email) {
 export async function addLocalStores(list) {
   const ids = [];
   for (const b of list) {
+    const addr = b.near.label.includes(',') && !/^-?\d/.test(b.near.label) ? b.near.label : `${b.near.lat},${b.near.lng}`;
+    // a starter store of the same chain with no address yet just gets this one's address (keeps its price estimates)
+    const key = (x) => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+    const blank = app.stores.find((x) => !x.address && (key(x.short).startsWith(key(b.brand)) || key(b.brand).startsWith(key(x.short))));
+    if (blank) { Object.assign(blank, { address: addr, enabled: true }); await saveStore(blank); ids.push(blank.id); continue; }
     let id = slug_(b.brand).slice(0, 24), k = 2; while (app.stores.some((x) => x.id === id)) id = slug_(b.brand).slice(0, 20) + '-' + k++;
     const st = { id, name: b.brand, short: b.brand, address: b.near.label.includes(',') && !/^-?\d/.test(b.near.label) ? b.near.label : `${b.near.lat},${b.near.lng}`,
       source: 'local', ad: `https://www.google.com/search?q=${encodeURIComponent(b.brand + ' weekly ad')}`, bulk: !!b.bulk, enabled: true, sort: 50 + app.stores.length };

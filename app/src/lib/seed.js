@@ -4,17 +4,15 @@
  * Edit the Google Sheet (not this file) after setup; this only seeds it.
  */
 
-var HOME_DEFAULT = 'Bay Farm Island, Alameda, CA 94502';
+var HOME_DEFAULT = '';
 
 /** id, name, address used for routing, auto price source, links */
 var STORES_SEED = [
-  { id: 'sbf',    name: "Safeway – Harbor Bay Landing",   short: "Safeway (Bay Farm)", address: "867 Island Dr, Alameda, CA 94502",          source: 'serpapi', serpMerchant: 'Safeway',        hours: '6am–midnight', ad: 'https://www.safeway.com/weeklyad', enabled: true },
-  { id: 'tj',     name: "Trader Joe's – South Shore",     short: "Trader Joe's",       address: "2217 South Shore Center, Alameda, CA 94501",  source: 'traderjoes',                              hours: '8am–9pm',      ad: 'https://www.traderjoes.com/home/products', enabled: true },
-  { id: 'tgt',    name: "Target – Alameda Landing",       short: "Target",             address: "2700 Fifth St, Alameda, CA 94501",            source: 'target',                                  hours: '8am–10pm',     ad: 'https://www.target.com/sl/alameda/2829', enabled: true },
-  { id: 'lucky',  name: "Lucky – Marina Village",         short: "Lucky",              address: "815 Marina Village Pkwy, Alameda, CA 94501",  source: 'serpapi', serpMerchant: 'Lucky',          hours: '6am–10pm',     ad: 'https://www.luckysupermarkets.com/weekly-ad', enabled: true },
-  { id: 'go',     name: "Grocery Outlet – Alameda",       short: "Grocery Outlet",     address: "730 Buena Vista Ave, Alameda, CA 94501",      source: 'manual',                                  hours: '8am–9pm',      ad: 'https://www.groceryoutlet.com/circulars', enabled: false },
-  { id: 'raleys', name: "Raley's – Blanding Ave",         short: "Raley's",            address: "2531 Blanding Ave, Alameda, CA 94501",        source: 'serpapi', serpMerchant: "Raley's",        hours: '6am–11pm',     ad: 'https://www.raleys.com/weekly-ad', enabled: true },
-  { id: 'costco', name: "Costco – San Leandro",           short: "Costco",             address: "1900 Davis St, San Leandro, CA 94577",        source: 'manual',                                  hours: '10am–8:30pm',  ad: 'https://www.costco.com/warehouse-locations/san-leandro-ca-118.html', enabled: false, bulk: true }
+  { id: 'sbf',    name: "Safeway",   short: "Safeway", address: "",          source: 'serpapi', serpMerchant: 'Safeway',        hours: '', ad: 'https://www.safeway.com/weeklyad', enabled: true },
+  { id: 'tj',     name: "Trader Joe's",     short: "Trader Joe's",       address: "",  source: 'traderjoes',                              hours: '',      ad: 'https://www.traderjoes.com/home/products', enabled: true },
+  { id: 'tgt',    name: "Target",       short: "Target",             address: "",            source: 'target',                                  hours: '',     ad: 'https://www.target.com/weekly-ad', enabled: true },
+  { id: 'go',     name: "Grocery Outlet",       short: "Grocery Outlet",     address: "",      source: 'manual',                                  hours: '',      ad: 'https://www.groceryoutlet.com/circulars', enabled: false },
+  { id: 'costco', name: "Costco",           short: "Costco",             address: "",        source: 'manual',                                  hours: '',  ad: 'https://www.costco.com/warehouse-locations', enabled: false, bulk: true }
 ];
 
 /**

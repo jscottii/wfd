@@ -108,7 +108,7 @@ export async function findLocalChains(addr, known = [], radiusMi = 25) {
   try { j = await Promise.any(['https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'].map(ask)); }
   catch (_) { throw new Error('The store map is busy right now — try again in a minute.'); }
   finally { clearTimeout(t); ctl.abort(); }
-  const knownKeys = known.map((s) => chainKey(s.short || s.name)).filter(Boolean);
+  const knownKeys = known.filter((s) => s.address).map((s) => chainKey(s.short || s.name)).filter(Boolean);
   const by = {};
   for (const e of j.elements || []) {
     const tg = e.tags || {}, lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
