@@ -113,7 +113,7 @@ const F = [
   ['couscous', 376, 13, 77, 0.6, 173, 173],
   ['oats|oatmeal|rolled oats', 389, 17, 66, 7, 40, 81],
   ['cooked pasta', 158, 5.8, 31, 0.9, 140, 140],
-  ['pasta|spaghetti|penne|rigatoni|macaroni|linguine|fettuccine|fusilli|farfalle|orzo|lasagna|lasagne|noodles?|ramen|udon|soba', 371, 13, 75, 1.5, 56, 100],
+  ['pasta|spaghetti|penne|rigatoni|ziti|rotini|macaroni|linguine|fettuccine|fusilli|farfalle|orzo|lasagna|lasagne|noodles?|ramen|udon|soba', 371, 13, 75, 1.5, 56, 100],
   ['gnocchi', 133, 3, 28, 0.5, 450, 160],
   ['panko|breadcrumbs?|bread crumbs', 395, 13, 72, 5, 30, 100],
   ['almond flour', 571, 21, 21, 50, 28, 96],

@@ -1,7 +1,7 @@
 <script>
   import { signIn, signUp, continueAsGuest, sendResetCode, resetWithCode, pendingCode, showCode, cleanCode } from '../lib/db.svelte.js';
   const joining = pendingCode();
-  let mode = $state(pendingCode() ? 'up' : 'in'), email = $state(localStorage.getItem('mp-email') || ''), password = $state(''), busy = $state(false), err = $state('');
+  let mode = $state(pendingCode() || location.hash === '#signup' ? 'up' : 'in'), email = $state(localStorage.getItem('mp-email') || ''), password = $state(''), busy = $state(false), err = $state('');
   let code = $state(''), sent = $state(false), info = $state('');
   const setMode = (m) => { mode = m; err = ''; info = ''; sent = false; code = ''; password = ''; };
   async function go(e) {
@@ -14,6 +14,11 @@
   async function guest() {
     err = ''; busy = true;
     try { await continueAsGuest(); } catch (x) { err = x.message; busy = false; }
+  }
+  // arrived from the home page's "Try it free" or "Create account" buttons
+  if (/^#(guest|signup|login)$/.test(location.hash)) {
+    const h = location.hash; history.replaceState(null, '', location.pathname);
+    if (h === '#guest' && !joining) guest();
   }
   async function send(e) {
     e?.preventDefault(); err = ''; busy = true;

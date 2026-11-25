@@ -8,9 +8,9 @@ export const APP_URL = __SITE_URL__;
 // ---- Ads & WFD Plus (all off until filled in) ----
 // Web ads: your Google AdSense publisher ID (ca-pub-…) and one display ad slot ID.
 export const ADSENSE_CLIENT = 'ca-pub-1112889265122999';
-export const ADSENSE_SLOT = '';
+export const ADSENSE_SLOT = '9069070065';
 // Optional: a separate AdSense slot for the pinned banner above the tab bar (falls back to ADSENSE_SLOT).
-export const ADSENSE_ANCHOR_SLOT = '';
+export const ADSENSE_ANCHOR_SLOT = '9799250694';
 // Phone-app ads (AdMob): the banner ad-unit IDs (ca-app-pub-…/…). Blank = Google's test ads in the phone app.
 // The AdMob *app* IDs go in ios/App/App/Info.plist (GADApplicationIdentifier) and android/app/src/main/AndroidManifest.xml.
 export const ADMOB_BANNER_IOS = '';

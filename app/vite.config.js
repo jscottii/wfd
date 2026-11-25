@@ -3,6 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
 import { SITE_URL } from './site.config.js';
+import { landingHtml, landingCss, publicFiles } from './site/build.js';
 const site = new URL(SITE_URL);
 const BASE = site.pathname.endsWith('/') ? site.pathname : site.pathname + '/';
 // on your own domain, GitHub Pages needs a CNAME file naming it
@@ -12,6 +13,15 @@ const adsense = () => ({ name: 'adsense', transformIndexHtml: () => (ADSENSE_CLI
 // ads.txt: tells ad buyers this publisher ID is allowed to sell ads on this site
 const adsTxt = () => ({ name: 'ads-txt', apply: 'build', generateBundle() { if (ADSENSE_CLIENT) this.emitFile({ type: 'asset', fileName: 'ads.txt', source: `google.com, ${ADSENSE_CLIENT.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n` }); } });
 const ADSENSE_CLIENT = (readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8').match(/ADSENSE_CLIENT = '([^']*)'/) || [])[1] || '';
+const ADSENSE_SLOT = (readFileSync(new URL('./src/lib/config.js', import.meta.url), 'utf8').match(/ADSENSE_SLOT = '([^']*)'/) || [])[1] || '';
+// the public website: a home page in index.html (shown until you sign in or start as a guest), plus recipe, guide and about pages
+const publicSite = () => ({
+  name: 'public-site',
+  transformIndexHtml: (html) => html
+    .replace('<meta name="robots" content="noindex" />', `<meta name="description" content="Plan the week, shop it in the fewest, cheapest stops, and cook it all at once. Free meal planner with shopping lists priced across your stores." />\n    <link rel="canonical" href="${SITE_URL}" />`)
+    .replace('<div id="app"></div>', `<style>${landingCss()}</style>\n    ${landingHtml()}\n    <div id="app"></div>`),
+  generateBundle() { for (const [fileName, source] of publicFiles({ site: SITE_URL, ads: { client: ADSENSE_CLIENT, slot: ADSENSE_SLOT } })) this.emitFile({ type: 'asset', fileName, source }); },
+});
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const built = new Date().toISOString().slice(0, 10);
 // the newest changelog entries, for the in-app "What's new" screen
@@ -31,6 +41,7 @@ export default defineConfig(({ mode }) => ({
     mode !== 'native' && cname(),
     mode !== 'native' && adsense(),
     mode !== 'native' && adsTxt(),
+    mode !== 'native' && publicSite(),
     mode !== 'native' && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
@@ -46,7 +57,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallback: '/wfd/index.html',
+        navigateFallback: BASE + 'index.html',
         runtimeCaching: [{ urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\//, handler: 'CacheFirst', options: { cacheName: 'map-tiles', expiration: { maxEntries: 400, maxAgeSeconds: 30 * 864e2 } } }]
       }
     })

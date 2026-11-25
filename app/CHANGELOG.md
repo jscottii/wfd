@@ -5,6 +5,13 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.18.0 — Nov 25, 2026
+- wfdmeals.app now opens on a home page that shows what WFD does, with recipes and guides anyone can read. Signed-in people still go straight to the app.
+- New recipes and guides written for WFD, each recipe with estimated nutrition and a flow chart.
+- Ads are switched on for the free version (they'll appear once Google approves the site).
+- The privacy policy now covers guest mode and the 14-day deletion.
+- Fixed: the app works offline again on the new address.
+
 ## 1.17.1 — Nov 25, 2026
 - Guests can look at the Pantry and Settings but not change them; **Create an account** unlocks both.
 - Guest data is deleted 14 days after the guest started.
