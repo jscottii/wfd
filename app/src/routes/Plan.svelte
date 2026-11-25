@@ -1,6 +1,6 @@
 <script>
   import AdSlot from '../components/AdSlot.svelte';
-  import { app, saveSettings, itemById, recipeById, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
+  import { app, saveSettings, itemById, recipeById, saveRecipe, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
   import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -9,7 +9,8 @@
   import Dish from '../components/Dish.svelte';
   const prefs = $derived(prefsOf(app.settings));
   const clash = (r) => conflicts(r, prefs);
-  import { rankByPantry, daysLeft } from '../lib/pantry.js';
+  import { rankByPantry, daysLeft, matchItem } from '../lib/pantry.js';
+  import { SIDES, SIDE_ITEMS, sideFor } from '../lib/sides.js';
   import Weeks from './Weeks.svelte';
   import Calendar from '../components/Calendar.svelte';
   import { ui } from '../lib/ui.svelte.js';
@@ -21,7 +22,7 @@
 
   const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
-  const kind = (r) => { const w = String(r?.when || '').toLowerCase(); return /breakfast/.test(w) ? 'breakfast' : /snack|dessert|treat/.test(w) ? 'snack' : 'main'; };
+  const kind = (r) => { const w = String(r?.when || '').toLowerCase(); return /breakfast/.test(w) ? 'breakfast' : /snack|dessert|treat/.test(w) ? 'snack' : /side/.test(w) ? 'side' : 'main'; };
   const short = (r) => (r ? String(r.title).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+with .*$/i, '').trim() : '');
   const weekOf = (r) => { const m = String(r.id).match(/^bm(\d\d)(\d\d)-/); return m ? `${['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m[1]]} ${+m[2]} week` : r.custom ? 'yours' : 'Thanksgiving week'; };
 
@@ -122,46 +123,75 @@
   let autoCuisines = $state([...(app.settings.cuisines || [])]), topping = $state('');
   const areasOf = (cs) => cs.flatMap((c) => (CUISINES.find((x) => x[0] === c) || [c, [c]])[1]).map((a) => a.toLowerCase());
   const inCuisines = (r, cs) => !cs.length || areasOf(cs).some((a) => String(r.cuisine || '').toLowerCase() === a);
-  async function topUp(needKind, have, cs) {
-    // find + save enough new recipes of one kind
-    const missing = needKind - have.length; if (missing <= 0) return [];
+  // ---- Pick for me ----
+  // A recipe can go in this week if it suits everyone's diets/allergies and (for lunch & dinner) the goals.
+  const fitsUs = (x) => !clash(x).any && (kind(x) !== 'main' || meetsGoals(x));
+  let keep = $state({});            // ♥ "keep this one" when repicking
+  let lastShown = new Set();        // what the last pick showed, so "new options" really are new
+  const MAIN_CATS = /dessert|side|starter|breakfast/i;
+  // find, check and save new recipes of one kind until there are `want` of them (six lookups at a time)
+  async function topUp(want, have, cs, avoid) {
+    const missing = want - have.length; if (missing <= 0) return [];
     const veg = prefs.diets.includes('Vegan') ? ['Vegan'] : prefs.diets.includes('Vegetarian') ? ['Vegetarian', 'Vegan'] : [];
-    let ideas = kindFor === 'breakfast' ? await findIdeas({ types: ['Breakfast'] }) : await findIdeas({ cuisines: cs.length ? cs : ['American', 'Italian', 'Mexican', 'Chinese'], types: veg });
     const saved = new Set(app.recipes.map((r) => r.title.toLowerCase()));
-    ideas = ideas.filter((i) => !saved.has(i.title.toLowerCase()));
     const out = [];
-    for (const i of ideas) {
+    // first the chosen cuisines, then (if still short) everything
+    const rounds = kindFor === 'breakfast' ? [{ types: ['Breakfast'] }] : [{ cuisines: cs, types: veg }, ...(cs.length ? [{ cuisines: [], types: veg }] : [])];
+    for (const q of rounds) {
+      let ideas = (await findIdeas(q.cuisines?.length || q.types?.length ? q : { cuisines: ['American', 'Italian', 'Mexican', 'Chinese', 'Indian', 'Japanese', 'Thai', 'Mediterranean'] }))
+        .filter((i) => !saved.has(i.title.toLowerCase()) && !avoid.has(i.title.toLowerCase()));
+      let n = 0;
+      const next = async () => {
+        while (n < ideas.length && out.length < missing) {
+          const i = ideas[n++];
+          topping = `Finding ${missing - out.length} more recipe${missing - out.length === 1 ? '' : 's'} that fit${q.cuisines?.length ? '' : ' (any cuisine)'}…`;
+          try {
+            const m = await mealDetail(i.id);
+            if (kindFor === 'main' && MAIN_CATS.test(m.strCategory)) continue;
+            const parsed = fromMealDb(m), rec = parsed.recipes[0];
+            const probe = { title: m.strMeal, ing: rec.ing, servings: rec.servings || 4, when: kindFor === 'main' ? 'Dinner' : 'Breakfast' };
+            if (!fitsUs(probe) || out.length >= missing) continue;
+            saved.add(m.strMeal.toLowerCase());
+            const [r] = await importRecipes([parsed], 'mdb'); if (r) out.push(r);
+          } catch { /* skip that one */ }
+        }
+      };
+      await Promise.all([next(), next(), next(), next(), next(), next()]);
       if (out.length >= missing) break;
-      topping = `Finding ${missing - out.length} more recipe${missing - out.length === 1 ? '' : 's'}…`;
-      const m = await mealDetail(i.id);
-      if (kindFor === 'main' && /dessert|side|starter|breakfast/i.test(m.strCategory)) continue;
-      const parsed = fromMealDb(m);
-      if (clash({ title: m.strMeal, ing: parsed.recipes[0].ing }).any) continue;
-      if (kindFor === 'main' && !meetsGoals({ ing: parsed.recipes[0].ing, servings: parsed.recipes[0].servings || 4 })) continue;
-      const [r] = await importRecipes([parsed], 'mdb'); out.push(r);
     }
     return out;
   }
   let kindFor = 'main';
-  async function pickForMe() {
-    how = 'auto'; track('pick_for_me', { cuisines: autoCuisines.length }); err = '';
+  /** fresh: show different recipes than last time (except the ones kept with ♥) */
+  async function pickForMe(fresh = false) {
+    how = 'auto'; track('pick_for_me', { cuisines: autoCuisines.length, fresh, kept: Object.keys(keep).length }); err = '';
     try {
-      const ok = (x) => !clash(x).any && inCuisines(x, autoCuisines) && (kind(x) !== 'main' || meetsGoals(x));
-      let pool = app.recipes.filter((x) => ok(x) || (kind(x) !== 'main' && !clash(x).any));
-      if (goalOn && pool.filter((x) => kind(x) === 'main').length < 2) toast('Few saved recipes meet your goals — finding new ones that do');
+      const kept = Object.keys(keep).filter((id) => keep[id] && recipeById(id));
+      const avoidIds = fresh ? new Set([...lastShown].filter((id) => !keep[id])) : new Set();
+      const avoidTitles = new Set([...avoidIds].map((id) => recipeById(id)?.title.toLowerCase()).filter(Boolean));
+      // saved recipes that fit; mains from the chosen cuisines
+      let pool = app.recipes.filter((x) => fitsUs(x) && kind(x) !== 'side' && (kind(x) !== 'main' || inCuisines(x, autoCuisines)) && !avoidIds.has(x.id));
+      // aim for extra choice (1.5× what's needed) so picks vary and repicks have somewhere to go
       for (const k of ['main', 'breakfast']) {
         if (!needN[k]) continue;
         kindFor = k;
         const have = pool.filter((x) => kind(x) === k);
-        pool = [...pool, ...(await topUp(needN[k], have, autoCuisines))];
+        const want = Math.ceil(needN[k] * 1.5) + (fresh ? needN[k] : 0);
+        pool = [...pool, ...(await topUp(want, have, autoCuisines, avoidTitles))];
+        // still short: saved recipes from other cuisines that fit
+        if (pool.filter((x) => kind(x) === k).length < needN[k]) pool = [...pool, ...app.recipes.filter((x) => kind(x) === k && fitsUs(x) && !pool.includes(x) && !avoidIds.has(x.id))];
       }
+      // and if a fresh pick ran dry, allow last time's again rather than leave days empty
+      if (fresh && pool.filter((x) => kind(x) === 'main').length < needN.main) pool = [...pool, ...app.recipes.filter((x) => avoidIds.has(x.id) && fitsUs(x))];
       topping = '';
       const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
       const pantryIds = new Set((usePantry && chosenRows.length ? chosenRows : onHand).filter((p) => p.item_id).map((p) => p.item_id));
-      const r = pickMix({ recipes: pool, need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry });
+      const r = pickMix({ recipes: [...new Set([...kept.map(recipeById), ...pool])], need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry, keep: kept });
       sel = Object.fromEntries(r.ids.map((id) => [id, true]));
+      lastShown = new Set(r.ids);
       days = autoFill(picked, household); manual = false;
       mixInfo = r;
+      if (autoSides) { topping = 'Adding sides to light meals…'; await addSides(); topping = ''; }
     } catch (e) { err = e.message; topping = ''; }
   }
   // the week at a glance: average per day for one person, from the meals placed in the grid
@@ -175,6 +205,7 @@
         any = true; const n = nutritionOf(r);
         if (!n?.ok) { missing++; continue; }
         kcal += n.kcal; protein += n.protein; carbs += n.carbs; fat += n.fat; counted++;
+        const sn = sideOf(d, m) && nutritionOf(sideOf(d, m)); if (sn?.ok) { kcal += sn.kcal; protein += sn.protein; carbs += sn.carbs; fat += sn.fat; }
         if (m !== 'snack' && m !== 'breakfast' && !meetsGoals(r)) offGoal++;
       }
       if (any) withFood++;
@@ -183,6 +214,30 @@
     const per = (x) => Math.round(x / withFood);
     return { kcal: per(kcal), protein: per(protein), carbs: per(carbs), fat: per(fat), days: withFood, missing, offGoal };
   });
+  // Light mains get a side (rice, bread, potatoes…) so lunch and dinner are a full meal
+  let autoSides = $state(app.settings.autoSides !== false);
+  const lightLimit = () => Math.max(450, goalOn && +goal ? +goal * 0.75 : 0);
+  const isLight = (r) => { const n = nutritionOf(r); return n?.ok && n.kcal < lightLimit(); };
+  async function ensureSide(key) {
+    const def = SIDES[key];
+    const have = app.recipes.find((r) => r.title === def.title);
+    if (have) return have.id;
+    const items = [], newItems = [];
+    for (const [name, cat] of SIDE_ITEMS[key] || []) { const it = matchItem(name, app.items); if (it) items.push({ id: it.id, units: 1 }); else newItems.push({ name, cat, units: 1 }); }
+    return saveRecipe({ ...def, custom: true, active: true, items: Object.fromEntries(items.map((x) => [x.id, x.units])) }, newItems);
+  }
+  async function addSides() {
+    const made = {};
+    for (const d of days) for (const m of ['lunch', 'dinner']) {
+      const r = d[m] ? recipeById(d[m]) : null;
+      if (!r || d[m + '_side'] || kind(r) !== 'main' || !isLight(r)) continue;
+      const key = sideFor(r); if (!key) continue;
+      try { d[m + '_side'] = made[key] ||= await ensureSide(key); } catch { /* leave it without a side */ }
+    }
+    days = [...days];
+  }
+  const sideOf = (d, m) => (d[m + '_side'] ? recipeById(d[m + '_side']) : null);
+  function dropSide(d, m) { delete d[m + '_side']; days = [...days]; manual = true; }
   async function removePlan() {
     if (!confirm('Delete this week’s plan? Your saved recipes stay.')) return;
     saving = true; err = '';
@@ -254,8 +309,9 @@
     {/if}
     <div class="row" style="gap:6px">
       <button class:ghost={how !== 'mine'} onclick={() => (how = 'mine')}>🔎 I'll pick</button>
-      <button class:ghost={how !== 'auto'} onclick={pickForMe}>✨ Pick for me</button>
+      <button class:ghost={how !== 'auto'} onclick={() => pickForMe()}>✨ Pick for me</button>
     </div>
+    {#if how === 'auto'}<label class="row small" style="gap:6px;margin:6px 0 0"><input type="checkbox" bind:checked={autoSides} onchange={() => saveSettings({ autoSides })} /> Add a side (rice, bread, potatoes…) to light lunches and dinners</label>{/if}
 
     {#if usePantry && onHand.length}
       <div class="pan-pick">
@@ -296,13 +352,19 @@
     {:else if how === 'auto'}
       <div style="margin-top:10px">
         <p class="small" style="margin:0 0 4px"><b>Cuisines this week</b> <span class="muted">(pick any — none means anything goes)</span></p>
-        <div class="row" style="gap:4px;margin-bottom:8px">{#each CUISINES as [c]}<button class="chip" class:on={autoCuisines.includes(c)} onclick={() => { autoCuisines = autoCuisines.includes(c) ? autoCuisines.filter((x) => x !== c) : [...autoCuisines, c]; pickForMe(); }}>{autoCuisines.includes(c) ? '✓ ' : ''}{c}</button>{/each}</div>
+        <div class="row" style="gap:4px;margin-bottom:8px">{#each CUISINES as [c]}<button class="chip" class:on={autoCuisines.includes(c)} onclick={() => { autoCuisines = autoCuisines.includes(c) ? autoCuisines.filter((x) => x !== c) : [...autoCuisines, c]; pickForMe(true); }}>{autoCuisines.includes(c) ? '✓ ' : ''}{c}</button>{/each}</div>
         {#if topping}<p class="small muted"><span class="spinner"></span> {topping}</p>{/if}
         {#if mixInfo && !topping}<p class="small muted" style="margin:0 0 6px">{picked.length} recipes, each eaten at most twice (cooked once, leftovers once). {mixInfo.shared ? `They share ${mixInfo.shared} ingredient${mixInfo.shared === 1 ? '' : 's'}, so there's less to buy and waste,` : 'Picked for variety,'} with different proteins and styles day to day.{#if mixInfo.short.main} Not enough recipes matched — try more cuisines.{/if}</p>{/if}
+        {#if picked.length}<p class="small muted" style="margin:0 0 4px">Tap ♡ on the ones you want to keep, then repick the rest.</p>{/if}
         {#each picked as r (r.id)}
-          <div class="list-row"><div class="grow"><b class="small">{r.title}</b><div class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</div></div><button class="quiet" onclick={() => toggle(r.id)} aria-label="Remove">✕</button></div>
+          <div class="list-row"><Dish {r} size={40} round={8} /><div class="grow"><b class="small">{r.title}</b><div class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</div><MealFacts {r} compact /></div>
+            <button class="quiet keep" class:on={keep[r.id]} onclick={() => (keep[r.id] = !keep[r.id])} aria-pressed={!!keep[r.id]} aria-label="Keep {r.title}">{keep[r.id] ? '♥' : '♡'}</button>
+            <button class="quiet" onclick={() => { delete keep[r.id]; toggle(r.id); }} aria-label="Remove">✕</button></div>
         {/each}
-        <button class="ghost" onclick={pickForMe}>🔀 Shuffle</button>
+        <div class="row" style="gap:6px;margin-top:8px">
+          {#if Object.values(keep).some(Boolean)}<button onclick={() => pickForMe(true)} disabled={!!topping}>🔄 Keep ♥, repick the rest</button>{/if}
+          <button class="ghost" onclick={() => { keep = {}; pickForMe(true); }} disabled={!!topping}>🔄 Repick all — new options</button>
+        </div>
       </div>
     {:else if picked.length}
       <div style="margin-top:10px">{#each picked as r (r.id)}<button class="chip on" onclick={() => toggle(r.id)}>✓ {short(r)}</button>{/each}</div>
@@ -315,7 +377,7 @@
       <p class="small muted" style="margin:4px 0 10px">We spread your recipes out — tap any meal to change it. <span class="pill">leftovers</span> means you cooked it earlier in the week.</p>
       <div class="week">
         {#each days.slice(shape.from, shape.to + 1) as d, di}
-          {@const dayN = [...shape.meals, ...(shape.snack ? ['snack'] : [])].map((m) => (d[m] ? recipeById(d[m]) : null)).filter(Boolean).map((r) => nutritionOf(r)).filter((n) => n?.ok)}
+          {@const dayN = [...shape.meals, ...(shape.snack ? ['snack'] : [])].flatMap((m) => [d[m] ? recipeById(d[m]) : null, sideOf(d, m)]).filter(Boolean).map((r) => nutritionOf(r)).filter((n) => n?.ok)}
           <div class="wday">
             <div class="wday-name">{d.day.slice(0, 3)}{#if dayN.length}<span class="wday-tot" title="Estimated, one serving of each meal">{dayN.reduce((a, n) => a + n.kcal, 0)} cal<br>{dayN.reduce((a, n) => a + n.protein, 0)}g protein</span>{/if}</div>
             <div class="wslots">
@@ -328,6 +390,11 @@
                     <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}{#if nutritionOf(r)?.ok}{@const n = nutritionOf(r)}<span class="wmac">{n.kcal} cal · {n.protein}P {n.carbs}C {n.fat}F</span>{/if}</span></span>
                   {:else}<span class="small muted">— eating out / nothing</span>{/if}
                 </button>
+                {#if r && sideOf(d, m)}{@const sd = sideOf(d, m)}
+                  <div class="wside small"><span>+ {sd.title}{#if nutritionOf(sd)?.ok} <span class="muted">· {nutritionOf(sd).kcal} cal</span>{/if}</span><button class="quiet" aria-label="Remove {sd.title}" onclick={() => dropSide(d, m)}>✕</button></div>
+                {:else if r && kind(r) === 'main' && isLight(r) && sideFor(r) && (m === 'lunch' || m === 'dinner')}
+                  <div class="wside small"><button class="quiet" style="padding:0" onclick={async () => { d[m + '_side'] = await ensureSide(sideFor(r)); days = [...days]; manual = true; }}>+ Add {SIDES[sideFor(r)].title.toLowerCase()} (light meal)</button></div>
+                {/if}
               {/each}
             </div>
           </div>
@@ -351,11 +418,11 @@
       <div class="sheet plan-sheet" role="dialog" aria-label="Choose a meal">
         <h3 style="margin:0 0 8px">{slotPick.day} · {slotPick.meal}</h3>
         {#each opts(slotPick.meal).length ? opts(slotPick.meal) : picked as r (r.id)}
-          <button class="sheet-row" class:on={sd[slotPick.meal] === r.id} onclick={() => { sd[slotPick.meal] = r.id; manual = true; slotPick = null; }}>
+          <button class="sheet-row" class:on={sd[slotPick.meal] === r.id} onclick={() => { if (sd[slotPick.meal] !== r.id) delete sd[slotPick.meal + '_side']; sd[slotPick.meal] = r.id; manual = true; slotPick = null; }}>
             <Dish {r} size={44} round={8} /><span class="grow"><b>{short(r)}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</span><br><MealFacts {r} compact /></span>
           </button>
         {/each}
-        <button class="sheet-row" class:on={!sd[slotPick.meal]} onclick={() => { sd[slotPick.meal] = ''; manual = true; slotPick = null; }}><span style="font-size:24px">🍴</span><span class="grow"><b>Eating out / nothing</b></span></button>
+        <button class="sheet-row" class:on={!sd[slotPick.meal]} onclick={() => { sd[slotPick.meal] = ''; delete sd[slotPick.meal + '_side']; manual = true; slotPick = null; }}><span style="font-size:24px">🍴</span><span class="grow"><b>Eating out / nothing</b></span></button>
       </div>
     {/if}
   {/if}
@@ -374,6 +441,10 @@
 </div>
 
 <style>
+  .keep { font-size: 20px; color: var(--muted); padding: 4px 8px; }
+  .keep.on { color: #d6336c; }
+  .wside { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 8px 6px 54px; color: var(--ink); }
+  .wside .quiet { font-size: 12px; }
   .wk-sum { margin: 10px 0 4px; padding: 10px; border-radius: 12px; background: var(--accent-soft); }
   .wk-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; text-align: center; }
   .wk-row span { background: #fff; border-radius: 10px; padding: 6px 2px; display: flex; flex-direction: column; }

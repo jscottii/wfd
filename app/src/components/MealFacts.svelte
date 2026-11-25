@@ -35,12 +35,13 @@
     {:else if n?.total}
       <p class="small muted" style="margin:0">Not enough recognisable amounts in this recipe to estimate nutrition.</p>
     {/if}
-    {#if c.allergens.length || c.diets.length || c.fits.length || c.avoid.length || c.notes.length}
+    {#if c.allergens.length || c.diets.length || c.fits.length || c.avoid.length || c.notes.length || c.swaps.length}
       <ul class="mf-diet">
         {#each c.allergens as a}<li class="bad">⚠ <b>Contains {a.name.toLowerCase()}</b> — {a.why.join(', ')}</li>{/each}
         {#each c.diets as d}<li class="warn">✗ <b>Not {d.diet}</b> — {d.why}</li>{/each}
         {#each c.avoid as a}<li class="warn">✗ <b>Has {a}</b> (on your avoid list)</li>{/each}
         {#each c.fits as f}<li class="ok">✓ <b>{f}</b></li>{/each}
+        {#each c.swaps as x}<li class="ok">↺ Swap {x}</li>{/each}
         {#each c.notes as x}<li class="muted">ℹ︎ {x}</li>{/each}
       </ul>
       <p class="small muted" style="margin:4px 0 0">Checked from the ingredient names — always read labels for allergies.</p>

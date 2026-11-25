@@ -5,6 +5,13 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.11.0 — Nov 24, 2026
+- Pick for me gives real variety: it no longer gets stuck on the same two or three dishes. It looks for 1.5× as many fitting recipes as it needs (bringing in new ones from your cuisines, then from any cuisine), and mixes proteins and styles.
+- Repick: tap ♡ on the meals you like and "Keep ♥, repick the rest", or "Repick all" for a fresh set of different options. Changing cuisines also gives new picks.
+- Fairer diet checks: Diabetes-friendly now looks at carbs and added sugar per serving (a teaspoon of sugar or a squeeze of lemon no longer rules a dish out). Low-FODMAP suggests swaps for onion and garlic (green onion tops, garlic-infused oil) instead of rejecting the dish. Pregnancy-safe no longer flags sushi rice, and cooking wine is a note, not a no.
+- Sides: Pick for me adds a side (rice, bread, potatoes, tortillas…) to light lunches and dinners, so meals are filling. Remove any side with ✕, or add one with a tap. Sides go on the shopping list and in Prep, and count toward nutrition.
+- Ready for your own web address: change one setting and the app, invite links and install icon all move to it.
+
 ## 1.10.1 — Nov 24, 2026
 - Find new checks more recipes against your diets, so strict diets (like low-FODMAP) still get a full page of ones that fit.
 

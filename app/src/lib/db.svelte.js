@@ -375,7 +375,7 @@ export async function savePlan({ household, shape, days, selected, startNewWeek,
   if (error) fail(error);
   app.plan = plan;
   const on = new Set(selected || []);
-  days.forEach((d) => ['breakfast', 'lunch', 'dinner', 'snack'].forEach((s) => d[s] && on.add(d[s])));
+  days.forEach((d) => ['breakfast', 'lunch', 'dinner', 'snack'].forEach((s) => { if (d[s]) on.add(d[s]); if (d[s + '_side']) on.add(d[s + '_side']); }));
   const toOn = app.recipes.filter((r) => on.has(r.id) && !r.active).map((r) => r.id);
   const toOff = app.recipes.filter((r) => !on.has(r.id) && r.active).map((r) => r.id);
   if (toOn.length) await sb.from('recipes').update({ active: true }).in('id', toOn);
@@ -395,8 +395,8 @@ export async function setRecipeActive(id, active) {
   const { error } = await sb.from('recipes').update({ active }).eq('id', id);
   if (error) fail(error);
   const r = recipeById(id); if (r) r.active = active;
-  if (!active && app.plan.days.some((d) => ['breakfast', 'lunch', 'dinner', 'snack'].some((s) => d[s] === id))) {
-    const days = app.plan.days.map((d) => { const x = { ...d }; ['breakfast', 'lunch', 'dinner', 'snack'].forEach((s) => { if (x[s] === id) x[s] = ''; }); return x; });
+  if (!active && app.plan.days.some((d) => ['breakfast', 'lunch', 'dinner', 'snack'].some((s) => d[s] === id || d[s + '_side'] === id))) {
+    const days = app.plan.days.map((d) => { const x = { ...d }; ['breakfast', 'lunch', 'dinner', 'snack'].forEach((s) => { if (x[s] === id) { x[s] = ''; delete x[s + '_side']; } if (x[s + '_side'] === id) delete x[s + '_side']; }); return x; });
     await savePlan({ household: app.plan.household, days, selected: app.recipes.filter((q) => q.active).map((q) => q.id) });
   }
 }

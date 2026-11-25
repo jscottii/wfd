@@ -11,7 +11,7 @@ const kindOf = (r) => { const w = String(r?.when || '').toLowerCase(); return /b
  * recipes: saved recipes; need: { breakfast, main, snack } counts; pantryIds: Set of item ids on hand;
  * liked: cuisines; recent: Set of recipe ids used lately. Returns recipe ids.
  */
-export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], recent = new Set(), usePantry = false }) {
+export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], recent = new Set(), usePantry = false, keep = [] }) {
   const info = recipes.map((r) => {
     const text = `${r.title} ${(r.ing || []).join(' ')}`.toLowerCase();
     return { r, kind: kindOf(r), items: new Set(Object.keys(r.items || {})), protein: tag(PROTEINS, text), style: tag(STYLES, text), cuisine: String(r.cuisine || '').toLowerCase() };
@@ -28,10 +28,12 @@ export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], rece
       + same.filter((c) => c.cuisine && c.cuisine === x.cuisine).length * 0.3;
     const fav = x.cuisine && likedL.some((c) => x.cuisine.includes(c) || c.includes(x.cuisine)) ? 0.25 : 0;
     const fresh = recent.has(x.r.id) ? -0.5 : 0;
-    return shared * 1.2 + onHand * 1.5 + fav + fresh - repeat + Math.random() * 0.35;
+    return shared * 1.2 + onHand * 1.5 + fav + fresh - repeat + Math.random() * 0.8;   // enough chance that picks vary
   };
+  // the ones you said to keep go in first; the rest are chosen to go with them
+  for (const id of keep) { const x = info.find((y) => y.r.id === id); if (x && !chosen.includes(x)) { chosen.push(x); x.items.forEach((i) => pool.add(i)); } }
   for (const kind of ['main', 'breakfast', 'snack']) {
-    for (let i = 0; i < (need[kind] || 0); i++) {
+    for (let i = chosen.filter((x) => x.kind === kind).length; i < (need[kind] || 0); i++) {
       const cands = info.filter((x) => x.kind === kind && !chosen.includes(x));
       if (!cands.length) break;
       const best = cands.map((x) => [x, score(x)]).sort((a, b) => b[1] - a[1])[0][0];
@@ -94,7 +96,7 @@ export function placeRecipes(grid, byKind, meals, snack) {
       }
     }
   };
-  grid.forEach((d) => { ['breakfast', 'lunch', 'dinner', 'snack'].forEach((m) => (d[m] = '')); });
+  grid.forEach((d) => { ['breakfast', 'lunch', 'dinner', 'snack'].forEach((m) => { d[m] = ''; delete d[m + '_side']; }); });
   fill(mainSlots(grid, meals), byKind.main || []);
   if (meals.includes('breakfast')) fill(daySlots(grid, 'breakfast'), byKind.breakfast || []);
   if (snack) fill(daySlots(grid, 'snack'), byKind.snack || []);

@@ -55,3 +55,15 @@ Nothing below changes until the IDs are filled in. The app code is ready for eac
 4. Put both links in `config.js` (`STRIPE_PAYMENT_LINK`, `STRIPE_PORTAL_LINK`).
 5. Supabase → Edge Functions → Secrets: add `STRIPE_SECRET_KEY`, deploy `stripe-webhook` with JWT verification off, then in Stripe **Developers → Webhooks → Add endpoint** `https://osyhpifmegqotdfdlave.supabase.co/functions/v1/stripe-webhook` for `checkout.session.completed`, `customer.subscription.updated` and `customer.subscription.deleted`. Add its signing secret as `STRIPE_WEBHOOK_SECRET`.
 6. In the iPhone/Android apps, Apple and Google require their own in-app purchase for ad-free, so the Stripe button is hidden there. Store subscriptions are a later step.
+
+## Your own domain (e.g. wfdapp.com)
+A domain of your own looks better in the stores and gets AdSense approved much more easily than a github.io address.
+1. Buy the domain from any registrar (Cloudflare, Namecheap, Porkbun, Squarespace Domains). A .com or .app is about $10–15 a year.
+2. In the registrar's DNS settings add:
+   - four **A** records for the bare domain (`@`): 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153
+   - a **CNAME** record for `www` pointing to `jscottii.github.io`
+3. Tell Claude the domain. It changes the one line in `app/site.config.js`, which handles the CNAME file, the paths, invite links and the install manifest, then deploys.
+4. GitHub → jscottii/wfd → **Settings → Pages**: enter the domain under *Custom domain*, wait for the DNS check, then tick **Enforce HTTPS**. Old jscottii.github.io/wfd links forward to the new address automatically.
+5. Supabase → **Authentication → URL Configuration**: set *Site URL* to the new address and add it under *Redirect URLs* (keep the old one too for a while).
+6. Update the privacy-policy and support URLs in App Store Connect and Google Play, and the "after payment" link on the Stripe Payment Link if you've made one.
+People who added WFD to their home screen from the old address should add it again from the new one. Their account and data are unchanged.

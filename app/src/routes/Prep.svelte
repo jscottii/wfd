@@ -44,7 +44,7 @@
   // this week's recipes: on the plan, or switched on
   let allRecipes = $derived.by(() => {
     if (cart) return (cart.recipes || []).map((x) => app.recipes.find((r) => r.id === x.id)).filter(Boolean);
-    const onPlan = new Set(); (app.plan.days || []).forEach((d) => SLOTS.forEach((s) => d[s] && onPlan.add(d[s])));
+    const onPlan = new Set(); (app.plan.days || []).forEach((d) => SLOTS.forEach((s) => { if (d[s]) onPlan.add(d[s]); if (d[s + '_side']) onPlan.add(d[s + '_side']); }));
     return app.recipes.filter((r) => onPlan.has(r.id) || r.active);
   });
   // big group, one meal at a time: just the recipe you're cooking now

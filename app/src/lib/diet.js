@@ -29,11 +29,12 @@ const R = {
   refined: { terms: 'sugar|honey|maple syrup|agave|corn syrup|white rice|white bread|pasta|spaghetti|rigatoni|penne|linguine|macaroni|noodle|noodles|bun|buns|pancake|syrup|juice|cake|cookie|cookies|candy|soda', safe: 'sugar-free*|sugar free*|no sugar added|sugar snap|unsweetened|whole wheat pasta|whole-wheat pasta|whole grain|wholegrain|zucchini noodle|shirataki|lemon juice|lime juice' },
   sodium: { terms: 'soy sauce|fish sauce|bouillon|stock cube|bacon|ham|sausage|salami|pepperoni|prosciutto|chorizo|anchovy|anchovies|miso|pickle|pickles|olives|capers|cured|feta|teriyaki|kimchi|sauerkraut|canned soup|seasoning salt|ramen', safe: 'low-sodium*|low sodium*|reduced-sodium*|reduced sodium*|no-salt-added*|no salt added*|unsalted*|salt-free*' },
   satfat: { terms: 'bacon|sausage|butter|heavy cream|whipping cream|double cream|lard|ghee|salami|pepperoni|chorizo|coconut oil|deep-fry|deep fry|shortening|cream cheese|mascarpone', safe: 'peanut butter|almond butter|nut butter|cashew butter|sunflower butter|cocoa butter|apple butter|butternut|butter bean|butter lettuce|light cream cheese' },
-  fodmap: { terms: 'onion|onions|garlic|shallot|shallots|leek|leeks|wheat|flour|bread|buns|bun|pasta|spaghetti|penne|linguine|rigatoni|macaroni|fettuccine|lasagna|noodles|farro|bulgur|couscous|barley|rye|beans|bean|lentil|lentils|chickpea|chickpeas|hummus|honey|agave|high fructose|apple|apples|pear|pears|mango|watermelon|cherries|milk|yogurt|ice cream|ricotta|cottage cheese|cashew|cashews|pistachio|pistachios|mushroom|mushrooms|cauliflower|asparagus|artichoke|snow peas|sugar snap|celery|inulin|chicory', safe: 'garlic-infused|garlic infused|garlic oil|onion-infused|onion infused|green onion tops|green parts|scallion greens|spring onion greens|chives|lactose-free*|lactose free*|almond milk|coconut milk|rice milk|gluten-free*|gluten free*|rice flour|corn flour|cornflour|oat flour|buckwheat flour|tapioca flour|potato flour|green beans|green bean|string beans|apple cider vinegar|oyster mushroom|oyster mushrooms|celery seed|celery salt|garlic chives|sourdough spelt|rice noodle|rice noodles|asafoetida' },
+  fodmapSwap: { terms: 'onion|onions|garlic|shallot|shallots|leek|leeks|red onion|yellow onion|white onion|onion powder|garlic powder', safe: 'garlic-infused|garlic infused|garlic oil|onion-infused|onion infused|green onion tops|green parts|scallion greens|spring onion greens|green onion|green onions|spring onion|spring onions|scallion|scallions|chives|garlic chives|asafoetida' },
+  fodmap: { terms: 'wheat|flour|bread|buns|bun|pasta|spaghetti|penne|linguine|rigatoni|macaroni|fettuccine|lasagna|noodles|farro|bulgur|couscous|barley|rye|beans|bean|lentil|lentils|chickpea|chickpeas|hummus|honey|agave|high fructose|apple|apples|pear|pears|mango|watermelon|cherries|milk|yogurt|ice cream|ricotta|cottage cheese|cashew|cashews|pistachio|pistachios|mushroom|mushrooms|cauliflower|asparagus|artichoke|snow peas|sugar snap|celery|inulin|chicory', safe: 'garlic-infused|garlic infused|garlic oil|onion-infused|onion infused|green onion tops|green parts|scallion greens|spring onion greens|chives|lactose-free*|lactose free*|almond milk|coconut milk|rice milk|gluten-free*|gluten free*|rice flour|corn flour|cornflour|oat flour|buckwheat flour|tapioca flour|potato flour|green beans|green bean|string beans|bean sprouts|mung bean sprouts|long beans|chinese long beans|apple cider vinegar|oyster mushroom|oyster mushrooms|celery seed|celery salt|garlic chives|sourdough spelt|rice noodle|rice noodles|asafoetida' },
   pork: { terms: 'pork|bacon|ham|lard|prosciutto|pepperoni|salami|chorizo|pancetta|gelatin|guanciale|hot dog', safe: 'turkey bacon|beef bacon|halal|vegan|plant-based|beef pepperoni|turkey pepperoni|chicken sausage|beef sausage' },
   alcohol: { terms: 'wine|beer|rum|vodka|bourbon|whiskey|whisky|brandy|sherry|mirin|sake|liqueur|tequila|gin|cognac|marsala|port|vermouth|kahlua|stout|ale', safe: 'wine vinegar|red wine vinegar|white wine vinegar|rice wine vinegar|sherry vinegar|cider vinegar|apple cider vinegar|non-alcoholic|alcohol-free|ginger beer|root beer' },
   kidney: { terms: 'soy sauce|bouillon|bacon|ham|sausage|banana|bananas|potato|potatoes|tomato|tomatoes|spinach|avocado|beans|lentil|lentils|cheese|milk|yogurt|nuts|chocolate|salami|pepperoni|cola', safe: 'low-sodium|green beans' },
-  pregnancy: { terms: 'raw egg|raw eggs|raw fish|sushi|sashimi|tartare|ceviche|carpaccio|rare|brie|camembert|blue cheese|gorgonzola|roquefort|unpasteurized|raw milk|swordfish|king mackerel|tilefish|shark|bigeye tuna|liver|pâté|pate|runny|soft-boiled|soft boiled|wine|beer|rum|vodka|bourbon|brandy|liqueur', safe: 'wine vinegar|pasteurized|cooked' },
+  pregnancy: { terms: 'raw egg|raw eggs|raw fish|sashimi|nigiri|poke|tartare|ceviche|carpaccio|rare|brie|camembert|blue cheese|gorgonzola|roquefort|unpasteurized|raw milk|swordfish|king mackerel|tilefish|shark|bigeye tuna|liver|pâté|pate|runny|soft-boiled|soft boiled', safe: 'pasteurized|cooked|sushi rice' },
 };
 // longest first, so "peanut butter" is reported rather than "peanut"; a safe word ending in * also covers the
 // one or two words after it ("lactose-free* " → "lactose-free whole milk")
@@ -56,7 +57,7 @@ const DIET_RULES = {
   Vegetarian: ['meat', 'fish', 'shellfish'], Vegan: ['meat', 'fish', 'shellfish', 'dairy', 'eggs', 'honey'], Pescatarian: ['meat'],
   Paleo: ['grains', 'legumes', 'dairy', 'addedSugar'], Whole30: ['grains', 'legumes', 'dairy', 'anySweetener', 'alcohol'],
   'Gluten-free': ['gluten'], 'Dairy-free': ['dairy'], Halal: ['pork', 'alcohol'], Kosher: ['pork', 'shellfish'],
-  'Diabetes-friendly': ['refined'], 'Heart-healthy': ['sodium', 'satfat'], 'Low-sodium': ['sodium'], 'Low-FODMAP': ['fodmap'],
+  'Diabetes-friendly': [], 'Heart-healthy': ['sodium', 'satfat'], 'Low-sodium': ['sodium'], 'Low-FODMAP': ['fodmap'],
   'Kidney-friendly': ['kidney'], 'Pregnancy-safe': ['pregnancy'],
 };
 // amount-based diets, judged per serving from the nutrition estimate
@@ -65,7 +66,7 @@ const AMOUNT_RULES = {
   'Low-carb': (n) => n.carbs > 40 && `about ${n.carbs} g carbs a serving`,
   'Low-fat': (n) => n.kcal && n.fat * 9 > n.kcal * 0.3 && `${Math.round((n.fat * 9 * 100) / n.kcal)}% of calories from fat`,
   'High-protein': (n) => n.kcal && (n.protein < 25 || n.protein * 4 < n.kcal * 0.2) && `only about ${n.protein} g protein a serving`,
-  'Diabetes-friendly': (n) => n.carbs > 60 && `about ${n.carbs} g carbs a serving`,
+  'Diabetes-friendly': (n) => (n.carbs > 60 && `about ${n.carbs} g carbs a serving`) || (n.sugar > 12 && `about ${n.sugar} g added sugar a serving`),
 };
 // one entry per word, singular and plural together ("pear, pears" → "pear")
 const uniq = (a) => { const seen = new Set(); return a.filter((w) => { const k = w.replace(/e?s$/, '').replace(/e$/, ''); if (seen.has(k)) return false; seen.add(k); return true; }); };
@@ -82,18 +83,20 @@ export function conflicts(r, prefs = {}) {
   const allergens = (prefs.allergies || []).map((a) => ({ name: a, why: uniq((ALLERGEN_KEY[a] || []).flatMap(found)) })).filter((x) => x.why.length);
   let n = null;
   const nut = () => (n ??= nutritionOf(r));
-  const diets = [], fits = [], notes = [];
+  const diets = [], fits = [], notes = [], swaps = [];
   for (const d of prefs.diets || []) {
     const why = uniq((DIET_RULES[d] || []).flatMap(found));
     if (d === 'Kosher' && found('meat').length && found('dairy').length) why.push('meat with dairy');
     const amt = AMOUNT_RULES[d] && nut()?.ok ? AMOUNT_RULES[d](nut()) : '';
+    if (d === 'Low-FODMAP') { const sw = found('fodmapSwap'); if (sw.length) swaps.push(...sw.map((w) => (/garlic/.test(w) ? 'garlic → garlic-infused oil' : 'onion → green onion tops (green part only)'))); }
+    if (d === 'Pregnancy-safe' && found('alcohol').length) notes.push(`Pregnancy: has ${short(found('alcohol'))} — fine when it simmers a while; leave it out if it's added at the end`);
     if (why.length || amt) diets.push({ diet: d, why: [why.length ? short(why) : '', amt].filter(Boolean).join('; ') });
-    else if (DIET_RULES[d] || (AMOUNT_RULES[d] && nut()?.ok)) fits.push(d);
+    else if (DIET_RULES[d]?.length || (AMOUNT_RULES[d] && nut()?.ok)) fits.push(d === 'Low-FODMAP' && swaps.length ? 'Low-FODMAP (with swaps)' : d);
     if ((d === 'Halal' || d === 'Kosher') && found('meat').length && !why.length) notes.push(`${d}: buy ${d.toLowerCase()} meat`);
   }
   const text = L.join(' ');
   const avoid = (prefs.avoid || []).filter((w) => w && new RegExp(`(^|[^\\w-])${String(w).toLowerCase().trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
-  return { allergens, diets, fits, notes, avoid, any: allergens.length + diets.length + avoid.length > 0 };
+  return { allergens, diets, fits, notes, swaps: uniq(swaps), avoid, any: allergens.length + diets.length + avoid.length > 0 };
 }
 /** One line for lists: "⚠️ Contains peanuts (peanut butter) · Low-FODMAP: garlic, onion" */
 export function conflictText(c) {

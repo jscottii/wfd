@@ -298,7 +298,7 @@ function planPortions(plan, recipes) {
   recipes.forEach(function (r) { sv[r.id] = Number(r.servings) || 0; });
   ((plan && plan.days) || []).forEach(function (d) {
     var ppl = Math.max(0, Number(d.people) || 0);
-    PLAN_SLOTS.forEach(function (s) {
+    PLAN_SLOTS.concat(PLAN_SLOTS.map(function (s) { return s + '_side'; })).forEach(function (s) {
       var id = d[s]; if (!id) return;
       (out[id] = out[id] || { portions: 0, scale: 1 }).portions += ppl;
     });

@@ -124,7 +124,8 @@ const F = [
   ['tortillas?|wraps?', 300, 8, 50, 8, 45, 100],
   ['pita|naan|flatbread', 275, 9, 55, 1.2, 60, 100],
   ['buns?|rolls?|hamburger buns?|slider buns?|brioche', 280, 9, 50, 4.5, 55, 100],
-  ['bread|baguette|sourdough|toast', 265, 9, 49, 3.2, 30, 45],
+  ['baguettes?|french bread|loaf', 270, 9, 52, 2.5, 250, 45],
+  ['bread|sourdough|toast', 265, 9, 49, 3.2, 30, 45],
   ['crackers?', 430, 9, 70, 13, 5, 60],
   ['croutons?', 407, 12, 74, 6.6, 3, 30],
   // ---- sugar & sweet
@@ -202,7 +203,8 @@ const F = [
   // ---- zero / negligible (last, so 'vanilla yogurt' or 'chili' still count as food)
   ['water|ice|salt|kosher salt|sea salt|black pepper|white pepper|peppercorns?|pepper flakes|red pepper flakes|chili flakes|cayenne|paprika|smoked paprika|cumin|coriander|turmeric|oregano|thyme|rosemary|sage|bay leaf|bay leaves|cinnamon|nutmeg|cloves? \\(ground\\)|ground cloves|allspice|cardamom|garlic powder|onion powder|chili powder|curry powder|garam masala|italian seasoning|herbes de provence|five spice|mustard seed|fennel seed|celery seed|dill weed|baking soda|baking powder|yeast|vanilla|extract|food coloring|cream of tartar|saffron|sumac|za.?atar|seasoning|spice|msg|gelatin|cooking spray|nonstick spray|zest', 0, 0, 0, 0, 2, 100],
 ];
-const FOODS = F.map(([m, kcal, p, c, f, each, cup]) => ({ re: new RegExp(`(^|[^\\w-])(${m})(?![\\w-])`, 'i'), kcal, p, c, f, each, cup }));
+const SWEET = /sugar|honey|syrup|agave|molasses|jam|jelly|preserves|chocolate/;
+const FOODS = F.map(([m, kcal, p, c, f, each, cup]) => ({ sweet: SWEET.test(m) && !/peas|snap/.test(m), re: new RegExp(`(^|[^\\w-])(${m})(?![\\w-])`, 'i'), kcal, p, c, f, each, cup }));
 const findFood = (name) => FOODS.find((x) => x.re.test(name));
 
 // ---- amounts
@@ -279,7 +281,7 @@ export function nutritionOf(r) {
   // "Rub: 2 tsp salt, 1 Tbsp brown sugar" / "1 fennel bulb + 1 apple" → one entry each
   const ing = (r.ing || []).filter((x) => x && !/:\s*$/.test(String(x).trim()))
     .flatMap((x) => String(x).replace(/^[^:]{1,24}:\s*/, '').split(/\s*(?:[,;+]|\band\b)\s*(?=[\d½⅓⅔¼¾⅛])/)).map((x) => x.trim()).filter(Boolean);
-  let kcal = 0, p = 0, c = 0, f = 0, known = 0;
+  let kcal = 0, p = 0, c = 0, f = 0, sugar = 0, known = 0;
   for (const line of ing) {
     const parsed = parseLine(line);
     const food = findFood(parsed.name) || findFood(String(line).toLowerCase());
@@ -288,9 +290,10 @@ export function nutritionOf(r) {
     if (!food.kcal) continue;
     const g = gramsFor(parsed, food) / 100;
     kcal += food.kcal * g; p += food.p * g; c += food.c * g; f += food.f * g;
+    if (food.sweet) sugar += food.c * g;
   }
   const serv = Number(r.servings) || 4;
-  const v = { kcal: round(kcal / serv), protein: round(p / serv), carbs: round(c / serv), fat: round(f / serv), known, total: ing.length };
+  const v = { kcal: round(kcal / serv), protein: round(p / serv), carbs: round(c / serv), fat: round(f / serv), sugar: round(sugar / serv), known, total: ing.length };
   v.ok = ing.length > 0 && known / ing.length >= 0.6 && v.kcal >= 60 && v.kcal <= 2500;
   if (typeof r === 'object') cache.set(r, { key: (r.ing || []).join('|') + r.servings, v });
   return v;
