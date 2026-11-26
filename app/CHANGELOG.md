@@ -5,6 +5,12 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.19.0 — Nov 26, 2026
+- **Save from more websites:** pasting a recipe link now works on sites that lay their recipe out their own way (an "Ingredients" list with "Directions" or "Step 1, Step 2…"), not just the sites that publish it in Google's recipe format.
+- **Clearer search results:** when nothing matches exactly, WFD says so ("No recipes called deep fried turkey") and shows similar recipes instead, plus any matches from your own saved recipes. If a website won't let WFD read its page, you'll see why and what to do.
+- Searching your saved recipes with no match offers to search for it in Find new.
+- Chrome extension 1.1: reads the same page layouts, including recipes that load after the page opens.
+
 ## 1.18.1 — Nov 25, 2026
 - Ad spaces are hidden until Google approves the site, so there are no empty boxes in the app or on the website.
 

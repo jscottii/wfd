@@ -27,23 +27,6 @@ const fail = (e) => { throw new Error(e?.message || String(e)); };
 const fromRecipe = (r) => ({ id: r.id, title: r.title, active: !!r.active, servings: Number(r.servings) || null, yield: r.yield || '', meal: r.when || '', fridge: r.fridge || '', freeze: r.freeze || '',
   ing: r.ing || [], steps: r.steps || [], tip: r.tip || '', custom: !!r.custom, source: r.source || '', cuisine: r.cuisine || null, ...(Number(r.calories) ? { calories: Number(r.calories) } : {}), ...(r.image ? { image: r.image } : {}), items: r.items || {} });
 
-/** Runs inside the web page: every schema.org Recipe the page publishes (most recipe sites do, for Google). */
-function readRecipes() {
-  const out = [];
-  const walk = (x) => {
-    if (!x || typeof x !== 'object') return;
-    if (Array.isArray(x)) return x.forEach(walk);
-    const t = [].concat(x['@type'] || []).map(String);
-    if (t.includes('Recipe')) out.push(x);
-    if (x['@graph']) walk(x['@graph']);
-    if (x.mainEntity) walk(x.mainEntity);
-  };
-  for (const s of document.querySelectorAll('script[type="application/ld+json"]')) { try { walk(JSON.parse(s.textContent)); } catch (_) {} }
-  const keep = out.map((x) => ({ name: x.name, recipeIngredient: x.recipeIngredient, recipeInstructions: x.recipeInstructions, recipeYield: x.recipeYield,
-    recipeCategory: x.recipeCategory, recipeCuisine: x.recipeCuisine, image: x.image, nutrition: x.nutrition ? { calories: x.nutrition.calories } : null }));
-  return { url: location.href, recipes: keep };
-}
-
 const imageOf = (img) => { const x = Array.isArray(img) ? img[0] : img; return typeof x === 'string' ? x : x?.url || ''; };
 
 /* ---------- screens ---------- */
@@ -76,15 +59,17 @@ async function main() {
   // what's on this page?
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   let page = null;
-  try { [{ result: page }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readRecipes }); }
-  catch (_) { page = null; }
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['reader.js'] });
+    [{ result: page }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.__wfdPage });
+  } catch (_) { page = null; }
 
   const { data: hh } = await sb.rpc('list_households');
   const cur = (hh || []).find((h) => h.is_current) || (hh || [])[0];
   if (!cur) return show(`<div class="err">You're not in a household yet. Open WFD to set one up.</div><button class="wide" id="o">Open WFD</button>${footer()}`), bind();
 
   if (!page?.recipes?.length) {
-    return show(`<h2>No recipe found here</h2><p class="muted">Open a recipe page and click the WFD button again. WFD can read recipes from most recipe sites (the ones that show up with ratings and cook times in Google). On other pages, add the recipe by hand in WFD.</p>
+    return show(`<h2>No recipe found here</h2><p class="muted">WFD looks for an ingredient list and steps on the page. Open the recipe itself (not a list of recipes) and click the WFD button again. If the recipe is there but WFD can't read it, add it by hand in WFD.</p>
       <button class="ghost wide" id="o">Open WFD</button>${footer()}`), bind();
   }
   const r = page.recipes[0];

@@ -10,15 +10,19 @@
   let fixedQ = $state(''), exact = false;   // the corrected search, when typos were fixed
   const warnFor = (r) => { const c = conflicts(r, prefsOf(app.settings)); return c.any ? ` — heads up: ${conflictText(c)}` : ''; };
   // onadd(recipe) — called for each recipe added (e.g. to drop it into a week); onbm — open the Bare Minimum weeks
-  let { onadd = null, onbm = null, onclose = null } = $props();
+  let { onadd = null, onbm = null, onclose = null, initial = '' } = $props();
 
   // tap = pick (tap again to unpick); press and hold = ♥ favorite (saved, and suggestions lean toward it)
   let fav = $state({ cuisines: [...(app.settings.cuisines || [])], types: [...(app.settings.mealTypes || [])] });
   let pick = $state({ cuisines: untrack(() => [...fav.cuisines]), types: untrack(() => (app.settings.diets || []).includes('Vegan') ? ['Vegan'] : (app.settings.diets || []).includes('Vegetarian') ? ['Vegetarian'] : []) });
-  let q = $state(''), link = $state('');
+  let q = $state(untrack(() => initial)), link = $state('');
   let ideas = $state([]), sites = $state([]), busy = $state(''), err = $state(''), added = $state({});
 
   const have = (title) => app.recipes.some((r) => r.title.toLowerCase() === String(title).toLowerCase());
+  // what a search found: 'exact' (titles with every word), 'similar' (only related dishes), or 'none'
+  let status = $state(null), mine = $state([]);
+  const wordsOf = (t) => String(t).toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !/^(and|with|the|for|easy|best|recipe|recipes|homemade|simple|quick)$/.test(w)).map((w) => w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1'));
+  const hasAll = (title, ws) => ws.length > 0 && ws.every((w) => String(title).toLowerCase().includes(w));
 
   // each shown idea's ingredients (fetched once, cached) → hide ones that clash with the household's diets/allergies
   let details = $state({}), showAll = $state(false);
@@ -38,7 +42,7 @@
   let seq = 0, wait = 0, sitesBusy = $state(false);
   async function look() {
     const my = ++seq, s = q.trim();
-    err = ''; busy = 'look';
+    err = ''; busy = 'look'; status = null;
     if (s) { sites = []; sitesBusy = true; callProxy({ action: 'recipe-search', q: s }).then((r) => { if (my === seq) sites = r.results || []; }).catch(() => {}).finally(() => { if (my === seq) sitesBusy = false; }); }
     else { sites = []; sitesBusy = false; }
     try {
@@ -52,8 +56,12 @@
       }
       exact = false;
       if (my !== seq) return;
-      ideas = found;
-      if (!found.length) err = s ? `No recipes called “${s}” in the free collection — web results below, or try one word like “chicken”.` : 'Nothing matches that mix — try unpicking something.';
+      const ws = wordsOf(fixedQ || s);
+      const exactOnes = s ? found.filter((i) => hasAll(i.title, ws)) : found;
+      ideas = s ? [...exactOnes, ...found.filter((i) => !exactOnes.includes(i))] : found;
+      // your own saved recipes that match: best matches first
+      mine = s ? app.recipes.filter((r) => ws.some((w) => r.title.toLowerCase().includes(w))).sort((a, b) => hasAll(b.title, ws) - hasAll(a.title, ws)).slice(0, 6) : [];
+      status = !s ? (found.length ? null : { kind: 'mix' }) : exactOnes.length ? { kind: 'exact', n: exactOnes.length } : found.length ? { kind: 'similar' } : { kind: 'none' };
     } catch (e) { if (my === seq) err = e.message; }
     if (my === seq) busy = '';
   }
@@ -115,8 +123,24 @@
   </form>
   {#if onbm}<p class="small" style="margin:6px 0 0"><button class="quiet" onclick={onbm}>Bring in a full week of meals →</button></p>{/if}
 
-  {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking…</p>{:else if fixedQ && ideas.length}<p class="small" style="margin:8px 0 0">Showing recipes for <b>“{fixedQ}”</b> · <button class="quiet" style="padding:0" onclick={() => { exact = true; look(); }}>search for “{q.trim()}” instead</button></p>{:else if q.trim() && ideas.length}<p class="small muted" style="margin:8px 0 0">{ideas.length} recipe{ideas.length === 1 ? '' : 's'} for “{q.trim()}”</p>{/if}
+  {#if busy === 'look'}<p class="small muted" style="margin:8px 0 0"><span class="spinner"></span> Looking{q.trim() ? ` for “${q.trim()}”` : ''}…</p>
+  {:else if status?.kind === 'exact'}
+    {#if fixedQ}<p class="small" style="margin:8px 0 0">Showing recipes for <b>“{fixedQ}”</b> · <button class="quiet" style="padding:0" onclick={() => { exact = true; look(); }}>search for “{q.trim()}” instead</button></p>
+    {:else}<p class="small muted" style="margin:8px 0 0">{status.n} recipe{status.n === 1 ? '' : 's'} for “{q.trim()}”{ideas.length > status.n ? ', then similar ones' : ''}</p>{/if}
+  {:else if status?.kind === 'similar'}<div class="note">No recipes called <b>“{fixedQ || q.trim()}”</b> in our collection. Here are similar recipes{mine.length ? ', plus matches from your own recipes' : ''}.</div>
+  {:else if status?.kind === 'none'}<div class="note">{#if mine.length}No new recipes found for <b>“{q.trim()}”</b>, but you already have these.{:else}We couldn't find any recipes for <b>“{q.trim()}”</b>. Try a single ingredient (like “chicken”), check the spelling, or paste a link to a recipe above.{/if}{#if sitesBusy} Still checking recipe websites…{/if}</div>
+  {:else if status?.kind === 'mix'}<div class="note">Nothing matches that mix. Try unpicking a cuisine or meal type.</div>{/if}
   <div class="ideas">
+    {#if mine.length && busy !== 'look'}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">In your recipes</p>
+      {#each mine as r (r.id)}
+        <div class="idea">
+          {#if r.image}<img src={r.image} alt="" loading="lazy" />{:else}<div class="noimg">🍽️</div>{/if}
+          <div style="flex:1;min-width:0"><b class="small">{r.title}</b><div class="small muted">Already saved</div></div>
+          {#if onadd}<button class="ghost" style="padding:6px 10px" onclick={() => onadd(r)}>Use</button>{:else}<span class="small muted">✓ Saved</span>{/if}
+        </div>
+      {/each}
+      {#if ideas.length}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">{status?.kind === 'exact' ? 'More recipes' : 'Similar recipes'}</p>{/if}
+    {/if}
     {#if hidden}<p class="small muted" style="grid-column:1/-1;margin:0">Hiding {hidden} that don’t fit your diets or allergies · <button class="quiet" style="padding:0" onclick={() => (showAll = true)}>Show them</button></p>
     {:else if showAll && strict}<p class="small muted" style="grid-column:1/-1;margin:0">Showing everything · <button class="quiet" style="padding:0" onclick={() => (showAll = false)}>Hide ones that don’t fit</button></p>{/if}
     {#each shown as i, n (i.id)}
@@ -128,7 +152,8 @@
         {:else}<button class="ghost" style="padding:6px 10px" onclick={() => addIdea(i)} disabled={!!busy} aria-label="Save recipe">{#if busy === i.id}<span class="spinner"></span>{:else}+{/if}</button>{/if}
       </div>
     {/each}
-    {#if sites.length || sitesBusy}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">From recipe websites {#if sitesBusy}<span class="spinner"></span>{/if}</p>{/if}
+    {#if sites.length || sitesBusy}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">From recipe websites {#if sitesBusy}<span class="spinner"></span>{/if}</p>
+    {:else if q.trim() && status && busy !== 'look'}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">No matches on recipe websites.</p>{/if}
     {#each sites as s (s.url)}
       <div class="idea">
         <div class="noimg">🍽️</div>
@@ -144,6 +169,7 @@
 
 <style>
   .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .note { background: var(--accent-soft); color: var(--accent-dark); border-radius: 10px; padding: 9px 12px; margin: 8px 0 0; font-size: 14px; }
   .chips :global(.chip) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; margin-top: 10px; }
   .idea { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; margin-bottom: 4px; }

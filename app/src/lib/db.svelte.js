@@ -562,7 +562,7 @@ export async function importRecipes(parsedList, prefix = 'web') {
 }
 export async function importRecipeUrl(url) {
   const { recipes } = await callProxy({ action: 'recipe-url', url });
-  if (!recipes?.length) throw new Error("That page doesn't share its recipe in a standard way. Try another site, or add it by hand.");
+  if (!recipes?.length) throw new Error("We couldn't find a recipe on that page (an ingredient list and steps). Check it's the recipe itself, not a list of recipes. If the recipe is there, save it with the WFD Chrome extension or add it by hand.");
   const { fromJsonLd } = await import('./discover.js');
   return importRecipes(recipes.slice(0, 1).map((r) => fromJsonLd(r, url)));
 }

@@ -36,10 +36,10 @@
             <span class="grow" style="text-align:left"><b class="small">{r.title}</b><br><span class="small muted">{r.when || ''}{r.cuisine ? ` · ${r.cuisine}` : ''}</span><br><MealFacts {r} compact /></span>
             <span class="rp-add" aria-hidden="true">＋</span>
           </button>
-        {:else}<p class="small muted">No saved recipes match. Try Find new.</p>{/each}
+        {:else}{#if q.trim()}<p class="small muted">No saved recipes match <b>“{q.trim()}”</b>.</p><button class="ghost" onclick={() => (tab = 'find')}>🔎 Search for “{q.trim()}” in Find new</button>{:else}<p class="small muted">No saved recipes yet. Try Find new.</p>{/if}{/each}
       </div>
     {:else if tab === 'find'}
-      <FindRecipes onadd={(r) => onpick(r.id)} />
+      <FindRecipes onadd={(r) => onpick(r.id)} initial={q.trim()} />
     {:else}
       <form onsubmit={fromLink}>
         <label class="f">Paste a recipe link from any site<input type="url" bind:value={link} placeholder="https://…" /></label>

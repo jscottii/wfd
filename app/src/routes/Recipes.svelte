@@ -14,6 +14,7 @@
   let starter = $state(false);
   // two views: your saved recipes, and finding new ones
   let view = $state((() => { try { return sessionStorage.getItem('mp-rec-view') || 'mine'; } catch { return 'mine'; } })());
+  let findQ = $state('');
   const setView = (v) => { view = v; finding = false; try { sessionStorage.setItem('mp-rec-view', v); } catch {} };
   let { go } = $props();
   let adding = $state(false), link = $state(''), linkBusy = $state(false), linkErr = $state(''), finding = $state(false);
@@ -88,7 +89,7 @@
       <button class:on={view === 'mine'} onclick={() => setView('mine')}>📖 My recipes ({app.recipes.length})</button>
       <button class:on={view === 'find'} onclick={() => setView('find')}>🔎 Find new</button>
     </div>
-    {#if view === 'find'}<FindRecipes onadd={() => {}} />{:else}
+    {#if view === 'find'}<FindRecipes initial={findQ} />{:else}
     {#if adding}
       <div class="card nocollapse">
         <h3 style="margin-top:0">Add a recipe</h3>
@@ -130,6 +131,10 @@
             <div class="row">{#if r.source}<a class="small" href={r.source} target="_blank" rel="noopener">Original ↗</a>{/if}<button class="ghost" onclick={() => edit(r)}>Edit</button><button class="ghost" onclick={() => remove(r)}>Delete</button></div>
           </div>
         {/if}
+      {:else}
+        {#if q.trim()}<p class="small muted" style="margin:4px 0">No saved recipes match <b>“{q.trim()}”</b>.</p>
+          <button class="ghost" onclick={() => { findQ = q.trim(); setView('find'); }}>🔎 Search for “{q.trim()}” in Find new</button>
+        {:else}<p class="small muted" style="margin:4px 0">No saved recipes yet.</p>{/if}
       {/each}
     </div>
     {/if}
