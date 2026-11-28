@@ -1,4 +1,6 @@
 <script>
+  import { ui } from '../lib/ui.svelte.js';
+  import Dish from './Dish.svelte';
   import { untrack } from 'svelte';
   import { app, saveSettings, importRecipes, importRecipeUrl, callProxy, toast } from '../lib/db.svelte.js';
   import { CUISINES, MEAL_TYPES, findIdeas, mealDetail, fromMealDb } from '../lib/discover.js';
@@ -84,6 +86,8 @@
   const down = (kind, v) => { held = false; clearTimeout(timer); timer = setTimeout(() => { held = true; heart(kind, v); }, 500); };
   const up = () => clearTimeout(timer);
 
+  let peeking = $state('');
+  async function peekIdea(i) { peeking = i.id; try { const r = fromMealDb(await mealDetail(i.id)).recipes[0]; ui.preview = { r: { ...r, image: i.thumb }, save: added[i.id] || have(i.title) ? null : () => addIdea(i) }; } catch (e) { toast(e.message); } peeking = ''; }
   async function addIdea(i) {
     busy = i.id; err = '';
     try { const m = await mealDetail(i.id); const [r] = await importRecipes([fromMealDb(m)], 'mdb'); added[i.id] = true; toast(`✓ ${r.title} saved${warnFor(r)}`); onadd?.(r); }
@@ -134,7 +138,7 @@
     {#if mine.length && busy !== 'look'}<p class="small muted" style="grid-column:1/-1;margin:6px 0 0">In your recipes</p>
       {#each mine as r (r.id)}
         <div class="idea">
-          {#if r.image}<img src={r.image} alt="" loading="lazy" />{:else}<div class="noimg">🍽️</div>{/if}
+          <Dish {r} size={48} round={8} />
           <div style="flex:1;min-width:0"><b class="small">{r.title}</b><div class="small muted">Already saved</div></div>
           {#if onadd}<button class="ghost" style="padding:6px 10px" onclick={() => onadd(r)}>Use</button>{:else}<span class="small muted">✓ Saved</span>{/if}
         </div>
@@ -146,7 +150,7 @@
     {#each shown as i, n (i.id)}
       {#if n === 4}<div style="grid-column:1/-1"><AdSlot slot="find-recipes" format="native" /></div>{/if}
       <div class="idea">
-        <img src={i.thumb + '/preview'} alt="" loading="lazy" />
+        <button class="peek" aria-label="Quick look at {i.title}" onclick={() => peekIdea(i)}><img src={i.thumb + '/preview'} alt="" loading="lazy" />{#if peeking === i.id}<span class="spinner"></span>{/if}</button>
         <div style="flex:1;min-width:0"><b class="small">{i.title}</b>{#if i.area}<div class="small muted">{i.area}</div>{/if}{#if details[i.id]}<MealFacts r={details[i.id]} compact />{/if}</div>
         {#if added[i.id] || have(i.title)}<span class="small muted">✓ Saved</span>
         {:else}<button class="ghost" style="padding:6px 10px" onclick={() => addIdea(i)} disabled={!!busy} aria-label="Save recipe">{#if busy === i.id}<span class="spinner"></span>{:else}+{/if}</button>{/if}
@@ -168,6 +172,7 @@
 </div>
 
 <style>
+  .peek { padding: 0; background: none; position: relative; flex: none; cursor: zoom-in; } .peek .spinner { position: absolute; inset: 0; margin: auto; }
   .chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .note { background: var(--accent-soft); color: var(--accent-dark); border-radius: 10px; padding: 9px 12px; margin: 8px 0 0; font-size: 14px; }
   .chips :global(.chip) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }

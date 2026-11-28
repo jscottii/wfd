@@ -11,7 +11,7 @@
 <div class="pv-back" role="presentation" onclick={onclose}></div>
 <div class="pv" role="dialog" aria-modal="true" aria-label={r.title}>
   <div class="pv-head">
-    <Dish {r} size={72} round={12} />
+    <Dish {r} size={72} round={12} open={false} />
     <div class="grow" style="min-width:0">
       {#if where}<div class="small muted">{where}</div>{/if}
       <h2 style="margin:2px 0 4px;font-size:20px">{r.title}</h2>

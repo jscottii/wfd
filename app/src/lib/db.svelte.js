@@ -40,6 +40,20 @@ export function need() {
   for (const [id, v] of Object.entries(app.plan.buy || {})) { if (!(id in n)) continue; if (v > 0) n[id] = v; else delete n[id]; }
   return n;
 }
+/** Rough cost of the shopping list for a plan you're still building: needed items not already owned, at the cheapest known (or typical) price. */
+export function estimateList({ days, household, shape, selected }) {
+  const on = new Set(selected || []);
+  const recipes = app.recipes.map((r) => ({ ...r, active: on.has(r.id) }));
+  const n = neededUnits(recipes, { ...app.plan, household: Number(household) || app.plan.household || 3, days, ...(shape ? { shape } : {}) });
+  for (const [id, v] of Object.entries(app.plan.extra || {})) if (v > 0) n[id] = (n[id] || 0) + v;
+  let total = 0, items = 0, guessed = 0;
+  for (const [id, c] of Object.entries(n)) {
+    const it = itemById(id); if (!it || owned(it)) continue;
+    const p = priceFor(id); if (!p.price) { guessed++; continue; }
+    total += p.price * c; items++; if (p.est) guessed++;
+  }
+  return { total, items, guessed };
+}
 export function portions() { return planPortions(app.plan, app.recipes); }
 export function itemById(id) { return app.items.find((i) => i.id === id); }
 /** Cheapest known price for one batch of an item, else a typical-price estimate (est: true). */
@@ -88,8 +102,8 @@ export async function resetWithCode(email, code, password) {
   const { error: e2 } = await sb.auth.updateUser({ password });
   if (e2) throw new Error(e2.message);
 }
-export async function signUp(email, password) {
-  const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
+export async function signUp(email, password, firstName = '') {
+  const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: firstName.trim() ? { data: { first_name: firstName.trim().slice(0, 30) } } : undefined });
   if (error) throw new Error(authMsg(error.message));
   if (!data.session) throw new Error('Account made, but email confirmation is still on in Supabase.');
 }
@@ -109,6 +123,14 @@ export async function continueAsGuest() {
   if (error) throw new Error(/anonymous/i.test(error.message) ? 'Guest mode is turned off right now. Please create an account.' : error.message);
 }
 export const isGuest = () => !!app.user?.is_anonymous;
+/** Things about you (not the household): your first name, whether you've done the welcome questions. */
+export const me = () => app.user?.user_metadata || {};
+export const myName = () => String(me().first_name || '').trim();
+export async function saveMe(patch) {
+  const { data, error } = await sb.auth.updateUser({ data: { ...me(), ...patch } });
+  if (error) fail(error);
+  app.user = data.user;
+}
 /** Turn this guest into a real account (same household, nothing lost). */
 export async function saveGuestAccount(email, password) {
   const { data, error } = await sb.auth.updateUser({ email: email.trim(), password });

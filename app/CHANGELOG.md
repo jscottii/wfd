@@ -5,6 +5,17 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.21.0 — Nov 28, 2026
+- **The WFD button:** a round WFD button now sits in the middle of the bottom bar on every page. Tap it for what you can add from there: a recipe, something for the shopping list, something for the pantry, a meal pick, a receipt. It replaces the separate + and cart buttons.
+- **Running cost on Plan:** as you pick meals, a bar shows roughly what the shopping list will cost, from the prices you've paid and typical prices.
+- **Quick look at any recipe:** tap a recipe's photo anywhere (Recipes, Find new, Prep) for the same preview as the Plan page.
+- **Shop:** where you start comes first, then the trip, the map and the list. The title shows the week, like "Nov 30 week's list".
+- **Recipes:** filters fit on one line.
+- **Your name:** add your first name when you sign up (or any time in Settings), and each page greets you.
+- **Welcome questions:** new accounts and guests get five quick, skippable questions (your name, how much detail, leftovers, what matters most, who you cook for) that set things up for you.
+- **Repeat meals:** a new setting for how often one meal can show up in a week: never, twice (leftovers once) or up to three times.
+- A gentle nudge to name your household if it's still called "Our household".
+
 ## 1.20.0 — Nov 27, 2026
 - **WFD Meals:** the app's official name, with a new logo ("meals" under the WFD letters) on the app icon, home screen, website and Chrome extension.
 - **Plan:** swipe a meal left to empty just that spot, or right to take it out of the week's plan, with Undo. Tap a meal for a quick preview: ingredients, steps, the flow chart and nutrition.

@@ -1,6 +1,9 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import InstallApp from '../components/InstallApp.svelte';
-  import { app, saveSettings, saveSerpKey, testSerpKey, saveInstacartKey, MAX_HOUSEHOLDS, switchHousehold, createHousehold, acceptInvite, declineInvite, leaveHousehold, renameHousehold, currentHousehold, getJoinCode, resetJoinCode, peekCode, joinWithCode, showCode, inviteLink, invite, signOut, deleteAccount, isGuest, saveStore, addLocalStores, setHouseholdSize, toast } from '../lib/db.svelte.js';
+  import { app, saveSettings, saveSerpKey, testSerpKey, saveInstacartKey, MAX_HOUSEHOLDS, switchHousehold, createHousehold, acceptInvite, declineInvite, leaveHousehold, renameHousehold, currentHousehold, getJoinCode, resetJoinCode, peekCode, joinWithCode, showCode, inviteLink, invite, signOut, deleteAccount, isGuest, saveStore, addLocalStores, setHouseholdSize, toast, myName, saveMe } from '../lib/db.svelte.js';
+  import Welcome from '../components/Welcome.svelte';
+  let redoWelcome = $state(false);
   import { findLocalChains } from '../lib/maps.js';
   import { ui } from '../lib/ui.svelte.js';
   import MealPrefs from '../components/MealPrefs.svelte';
@@ -86,6 +89,7 @@
 </script>
 
 <div class="page">
+  <Hello page="more" />
   <div class="row" style="gap:6px;margin:6px 0 8px">
     <button class="ghost" onclick={() => go('recipes')}>📖 Saved recipes</button>
     <button class="ghost" onclick={() => (ui.receipt = true)}>🧾 Scan a receipt</button>
@@ -143,6 +147,9 @@
     <h1>Settings</h1>
     <InstallApp />
     <div class="card">
+      <label class="f">Your first name <span class="muted small">(just for you; others in the household see their own)</span><input value={myName()} maxlength="30" autocomplete="given-name" placeholder="First name" onchange={(e) => saveMe({ first_name: e.currentTarget.value.trim() }).then(() => toast('✓ Name saved')).catch((x) => toast(x.message))} /></label>
+      <label class="f">Repeat a meal in a week<select value={String(app.settings.repeat || 2)} onchange={(e) => { saveSettings({ repeat: +e.currentTarget.value }); toast('✓ Saved. Pick for me uses this next time.'); }}><option value="1">Never: no leftovers</option><option value="2">Up to twice: cook once, leftovers once</option><option value="3">Up to 3 times: same thing most nights is fine</option></select></label>
+      <button type="button" class="quiet small" style="margin:-6px 0 8px;padding:0" onclick={() => (redoWelcome = true)}>Answer the welcome questions again</button>
       <label class="f">How much detail<select bind:value={s.audience} onchange={() => { saveSettings({ audience: s.audience }); toast(s.audience === "group" ? "✓ Showing all the details" : "✓ Simplified view"); }}><option value="household">Simplified</option><option value="group">Give me all the details</option></select></label>
       <p class="small muted" style="margin:-4px 0 8px">Simplified keeps screens short. All the details adds full prep steps, bigger batches and more numbers: handy when cooking for a crowd.</p>
       <label class="f">Show pantry amounts in<select bind:value={s.units}><option value="imperial">Imperial — lb, oz, cups</option><option value="metric">Metric — kg, g, L</option><option value="relative">Roughly — plenty, some, low, out</option></select></label>
@@ -295,3 +302,5 @@
     <Feedback />
   </div>
 </div>
+{#if redoWelcome}<Welcome onclose={() => { redoWelcome = false; location.reload(); }} />{/if}
+

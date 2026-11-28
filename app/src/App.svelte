@@ -26,6 +26,9 @@
   import PullRefresh from './components/PullRefresh.svelte';
   import HouseholdPicker from './components/HouseholdPicker.svelte';
   let hhOpen = $state(false);
+  import RecipePreview from './components/RecipePreview.svelte';
+  import { setRecipeActive, importRecipes, toast } from './lib/db.svelte.js';
+  import ActionFab from './components/ActionFab.svelte';
   import WhatsNew from './components/WhatsNew.svelte';
   // after an update, once: what changed (first-ever open just records the version)
   let showNew = $state((() => { try { let v = localStorage.getItem('wfd-seen-version'); if (!v) { const existing = Object.keys(localStorage).some((k) => /^mp-|auth-token/.test(k)); if (!existing) { localStorage.setItem('wfd-seen-version', __APP_VERSION__); return false; } v = '1.4.1'; localStorage.setItem('wfd-seen-version', v); } return v !== __APP_VERSION__; } catch { return false; } })());
@@ -33,8 +36,13 @@
   let showAllNew = $state(false);
   import { needsName } from './lib/hhname.js';
   import Admin from './routes/Admin.svelte';
+  import Welcome from './components/Welcome.svelte';
+  import { me } from './lib/db.svelte.js';
+  // the welcome questions: new accounts (made in the last 3 days) and guests, once
+  let showWelcome = $state(false), welcomeDone = $state(false);
+  $effect(() => { if (app.ready && app.household && app.user && !app.pendingJoin && !welcomeDone && !me().surveyed && (isGuest() || Date.now() - new Date(app.user.created_at || 0).getTime() < 3 * 864e5)) showWelcome = true; });
   let showOnboard = $state(false), onboardDismissed = $state(false);
-  $effect(() => { if (app.ready && app.household && app.session && !isGuest() && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin) showOnboard = true; });
+  $effect(() => { if (app.ready && app.household && app.session && !isGuest() && (!app.settings.onboarded || !app.settings.homeSet || needsName(app, currentHousehold())) && !onboardDismissed && !app.pendingJoin && !showWelcome) showOnboard = true; });
 
   const TABS = [['plan', '📅', 'Plan'], ['trip', '🛒', 'Shop'], ['prep', '🔪', 'Prep'], ['pantry', '🥫', 'Pantry'], ['recipes', '📖', 'Recipes'], ['more', '☰', 'More']];
   const PAGES = ['plan', 'trip', 'prep', 'pantry', 'more', 'recipes', 'prices', 'admin'];
@@ -85,8 +93,15 @@
     {:else}<Plan {go} />{/if}
     <SiteFooter {page} {go} />
   {/key}
-  {#if !['prep', 'more', 'admin', 'pantry'].includes(page)}
-    <button class="cart-fab" aria-label="Shopping carts" onclick={() => (ui.cartPicker = !ui.cartPicker)}><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5h2.6l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.2l1.6-6.8H6.2"/><circle cx="9.6" cy="20" r="1.6" fill="#fff"/><circle cx="17.4" cy="20" r="1.6" fill="#fff"/></svg>{#if app.carts.length}<span class="fab-badge">{app.carts.length + 1}</span>{/if}</button>
+  <ActionFab {page} {go} />
+  {#if ui.preview}
+    {@const pv = ui.preview}
+    {@const mine = app.recipes.find((x) => x.id === pv.r.id)}
+    <RecipePreview r={pv.r} where={mine ? (mine.active ? 'On this week’s list' : 'Saved recipe') : 'Not saved yet'} onclose={() => (ui.preview = null)} actions={[
+      ...(mine ? [{ label: mine.active ? '✓ Shopping for it this week' : '＋ Shop for it this week', kind: mine.active ? 'ghost' : '', run: () => setRecipeActive(mine.id, !mine.active).catch((e) => toast(e.message)) }]
+        : pv.save ? [{ label: '＋ Save recipe', kind: '', run: async () => { await pv.save(); ui.preview = null; } }] : []),
+      { label: 'Done', kind: 'quiet', run: () => (ui.preview = null) },
+    ]} />
   {/if}
   {#if ui.cartPicker}
     <div class="sheet-back" role="presentation" onclick={() => (ui.cartPicker = false)}></div>
@@ -109,7 +124,7 @@
   {#if hhOpen}<HouseholdPicker {go} onclose={() => (hhOpen = false)} />{/if}
   <nav class="tabs">
     <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />WFD Meals{#if app.households.length}<button class="hh" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
-    {#each TABS as [k, ic, label]}<button class:on={page === k} class:dim={k === 'pantry' && isGuest()} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
+    {#each TABS as [k, ic, label], ti}{#if ti === 3}<span class="fab-gap" aria-hidden="true"></span>{/if}<button class:on={page === k} class:dim={k === 'pantry' && isGuest()} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
   </nav>
 {/if}
 {#if app.pendingJoin}
@@ -126,6 +141,7 @@
     </div>
   </div>
 {/if}
-{#if (showNew || showAllNew) && app.ready && app.session && !showOnboard}<WhatsNew all={showAllNew} onclose={() => { showNew = false; showAllNew = false; }} />{/if}
-{#if showOnboard}<Onboarding {go} onclose={() => { showOnboard = false; onboardDismissed = true; }} />{/if}
+{#if (showNew || showAllNew) && app.ready && app.session && !showOnboard && !showWelcome}<WhatsNew all={showAllNew} onclose={() => { showNew = false; showAllNew = false; }} />{/if}
+{#if showWelcome}<Welcome onclose={() => { showWelcome = false; welcomeDone = true; }} />{/if}
+{#if showOnboard && !showWelcome}<Onboarding {go} onclose={() => { showOnboard = false; onboardDismissed = true; }} />{/if}
 {#if app.toast}<div class="toast">{app.toast}</div>{/if}

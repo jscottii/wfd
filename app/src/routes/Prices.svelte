@@ -1,4 +1,5 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import { app, need, refreshPrices, setPriceByHand, toast } from '../lib/db.svelte.js';
   import { trip } from '../lib/trip.svelte.js';
   let { go } = $props();
@@ -22,6 +23,7 @@
 </script>
 
 <div class="page">
+  <Hello page="prices" />
   <h1>Prices</h1>
   <div class="card">
     {#if app.hasSerpKey}

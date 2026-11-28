@@ -1,8 +1,9 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import { swipe } from '../lib/swipe.js';
   import RecipePreview from '../components/RecipePreview.svelte';
   import AdSlot from '../components/AdSlot.svelte';
-  import { app, saveSettings, itemById, recipeById, saveRecipe, cheapestPrice, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
+  import { app, saveSettings, itemById, recipeById, saveRecipe, cheapestPrice, savePlan, deletePlan, estimateList, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
   import { pickMix, recipesNeeded, placeRecipes } from '../lib/mix.js';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -37,7 +38,7 @@
     // sides (rice, bread…) aren't placed on their own; they ride along with a main
     const g = { breakfast: [], snack: [], main: [], side: [] };
     recipes.forEach((r) => (g[kind(r)] || g.main).push(r));
-    placeRecipes(all.slice(shape.from, shape.to + 1), g, shape.meals, shape.snack);
+    placeRecipes(all.slice(shape.from, shape.to + 1), g, shape.meals, shape.snack, repeatN());
     return all;
   }
   function reshape(patch) {
@@ -128,7 +129,8 @@
   function setHousehold(v) { const nv = Math.max(1, Number(v) || 1); days.forEach((d) => { if (Number(d.people) === Number(household)) d.people = nv; }); household = nv; }
   // how to choose this week's recipes
   let how = $state(''), usePantry = $state(null), mixInfo = $state(null);
-  let needN = $derived(recipesNeeded(shape));
+  const repeatN = () => Number(app.settings.repeat) || 2;
+  let needN = $derived(recipesNeeded(shape, repeatN()));
   // Pick for me: cuisines for this week (starts from your favorites), then a mix from saved recipes —
   // and if those run short, new recipes in those cuisines are found and saved
   let autoCuisines = $state([...(app.settings.cuisines || [])]), topping = $state('');
@@ -205,6 +207,9 @@
       if (autoSides) { topping = 'Adding sides to light meals…'; await addSides(); topping = ''; }
     } catch (e) { err = e.message; topping = ''; }
   }
+  $effect(() => { if (ui.act === 'pick') { ui.act = ''; pickForMe(); setTimeout(() => document.querySelector('.pickfor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } });
+  // the shopping list's rough cost, updated as you pick meals
+  let est = $derived(estimateList({ days, household, shape, selected: Object.keys(sel).filter((k) => sel[k]) }));
   // the week at a glance: average per day for one person, from the meals placed in the grid
   let weekN = $derived.by(() => {
     const ds = days.slice(shape.from, shape.to + 1), slots = [...shape.meals, ...(shape.snack ? ['snack'] : [])];
@@ -270,6 +275,7 @@
 </script>
 
 <div class="page">
+  <Hello page="plan" />
   <div class="spread">
     <h1>Plan the week</h1>
     <div class="row" style="gap:6px">
@@ -285,6 +291,9 @@
   {:else}
   {#if err}<div class="err">⚠️ {err}</div>{/if}
   {#if msg}<div class="ok">{msg}</div>{/if}
+  {#if picked.length}
+    <button class="estbar" onclick={() => go('trip')} title="Open the shopping list">🛒 <span>Shopping list so far: <b>about ${Math.round(est.total)}</b></span><span class="small muted">{est.items} item{est.items === 1 ? '' : 's'}{est.guessed ? ` · ${est.guessed} estimated` : ''}</span></button>
+  {/if}
 
   <div class="card">
     <h3 style="margin:0">Who's eating, and when</h3>
@@ -320,7 +329,7 @@
     {/if}
     <div class="row" style="gap:6px">
       <button class:ghost={how !== 'mine'} onclick={() => (how = 'mine')}>🔎 I'll pick</button>
-      <button class:ghost={how !== 'auto'} onclick={() => pickForMe()}>✨ Pick for me</button>
+      <button class="pickfor" class:ghost={how !== 'auto'} onclick={() => pickForMe()}>✨ Pick for me</button>
     </div>
     {#if how === 'auto'}<label class="row small" style="gap:6px;margin:6px 0 0"><input type="checkbox" bind:checked={autoSides} onchange={() => saveSettings({ autoSides })} /> Add a side (rice, bread, potatoes…) to light lunches and dinners</label>{/if}
 
@@ -365,7 +374,7 @@
         <p class="small" style="margin:0 0 4px"><b>Cuisines this week</b> <span class="muted">(pick any — none means anything goes)</span></p>
         <div class="row" style="gap:4px;margin-bottom:8px">{#each CUISINES as [c]}<button class="chip" class:on={autoCuisines.includes(c)} onclick={() => { autoCuisines = autoCuisines.includes(c) ? autoCuisines.filter((x) => x !== c) : [...autoCuisines, c]; pickForMe(true); }}>{autoCuisines.includes(c) ? '✓ ' : ''}{c}</button>{/each}</div>
         {#if topping}<p class="small muted"><span class="spinner"></span> {topping}</p>{/if}
-        {#if mixInfo && !topping}<p class="small muted" style="margin:0 0 6px">{picked.length} recipes, each eaten at most twice (cooked once, leftovers once). {mixInfo.shared ? `They share ${mixInfo.shared} ingredient${mixInfo.shared === 1 ? '' : 's'}, so there's less to buy and waste,` : 'Picked for variety,'} with different proteins and styles day to day.{#if mixInfo.short.main} Not enough recipes matched — try more cuisines.{/if}</p>{/if}
+        {#if mixInfo && !topping}<p class="small muted" style="margin:0 0 6px">{picked.length} recipes, {repeatN() === 1 ? 'each eaten once (no leftovers).' : repeatN() >= 3 ? 'each eaten up to three times.' : 'each eaten at most twice (cooked once, leftovers once).'} {mixInfo.shared ? `They share ${mixInfo.shared} ingredient${mixInfo.shared === 1 ? '' : 's'}, so there's less to buy and waste,` : 'Picked for variety,'} with different proteins and styles day to day.{#if mixInfo.short.main} Not enough recipes matched — try more cuisines.{/if}</p>{/if}
         {#if picked.length}<p class="small muted" style="margin:0 0 4px">Tap ♡ on the ones you want to keep, then repick the rest.</p>{/if}
         {#each picked as r (r.id)}
           <div class="list-row"><Dish {r} size={40} round={8} /><div class="grow"><b class="small">{r.title}</b><div class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''}</div><MealFacts {r} compact /></div>
@@ -400,7 +409,7 @@
                 <button class="wslot" class:empty={!r} use:swipe={r ? { left: () => dropFromPlan(r.id), right: () => clearSpot(d, m) } : {}} onclick={() => (r ? (preview = { r, d, m }) : (slotPick = { day: d.day, meal: m }))}>
                   <span class="small muted wmeal">{m[0].toUpperCase() + m.slice(1)}</span>
                   {#if r}
-                    <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}{#if nutritionOf(r)?.ok}{@const n = nutritionOf(r)}<span class="wmac">{n.kcal} cal · {n.protein}P {n.carbs}C {n.fat}F</span>{/if}</span></span>
+                    <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} open={false} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}{#if nutritionOf(r)?.ok}{@const n = nutritionOf(r)}<span class="wmac">{n.kcal} cal · {n.protein}P {n.carbs}C {n.fat}F</span>{/if}</span></span>
                   {:else}<span class="small muted">— eating out / nothing</span>{/if}
                 </button>
                 </div>
@@ -465,6 +474,8 @@
 </div>
 
 <style>
+  .estbar { position: sticky; top: 6px; z-index: 5; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; width: 100%; justify-content: flex-start; text-align: left; background: var(--accent-soft); color: var(--ink); border: 1px solid var(--accent); border-radius: 12px; padding: 8px 12px; margin: 0 0 10px; font-weight: 400; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .estbar b { color: var(--accent-dark, var(--accent)); }
   .keep { font-size: 20px; color: var(--muted); padding: 4px 8px; }
   .keep.on { color: #d6336c; }
   .wside { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 8px 6px 54px; color: var(--ink); }

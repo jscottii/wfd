@@ -1,8 +1,11 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import GuestNote from '../components/GuestNote.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import PantryScan from '../components/PantryScan.svelte';
   let scanning = $state(false);
+  import { ui } from '../lib/ui.svelte.js';
+  $effect(() => { const a = ui.act; if (a === 'pantry') { ui.act = ''; adding = true; setTimeout(() => document.querySelector('.addform textarea')?.focus(), 60); } else if (a === 'scan') { ui.act = ''; scanning = true; } });
   import { app, addPantry, updatePantry, removePantry, toast, isGuest } from '../lib/db.svelte.js';
   import { parseAdd, daysLeft, covers, placeFor, useByFor } from '../lib/pantry.js';
   import { suggest, learn, loadIngredients } from '../lib/fuzzy.js';
@@ -55,6 +58,7 @@
 </script>
 
 <div class="page wide">
+  <Hello page="pantry" />
   <div class="spread"><h1>Pantry</h1><button class="quiet" onclick={() => go('plan')}>Plan from it →</button></div>
   {#if isGuest()}<GuestNote text="The pantry is for accounts. You can look around, but you'll need an account to add or change things." />{/if}
   <fieldset class="locked" disabled={isGuest()}>
@@ -78,7 +82,7 @@
 
   {#if app.pantry.length > 8}<input placeholder="Search your pantry" bind:value={q} style="margin:8px 0" />{/if}
   {#if !app.pantry.length && !adding}
-    <div class="note">Your pantry is empty. Tap <b>+</b> below to add the 10–20 things you always have.</div>
+    <div class="note">Your pantry is empty. Tap the round <b>WFD</b> button below to add the 10–20 things you always have.</div>
   {/if}
 
   {#each byPlace as g (g.k)}
@@ -117,10 +121,10 @@
     </details>
   {/each}
 
-  <div class="addwrap"><button class="addbtn" class:on={adding} onclick={() => (adding = !adding)} aria-label={adding ? 'Close adding' : 'Add to your pantry'} aria-expanded={adding}>{adding ? '×' : '+'}</button></div>
   {#if adding}
     <button class="ghost" style="width:100%;margin-bottom:8px" onclick={() => (scanning = true)}>📷 Add with the camera — scan barcodes or snap the fridge</button>
-  <form class="card" onsubmit={addTyped}>
+  <form class="card addform" onsubmit={addTyped}>
+    <div class="spread"><h3 style="margin:0">Add to your pantry</h3><button type="button" class="quiet" aria-label="Close" onclick={() => (adding = false)}>✕</button></div>
     <label class="f">Add what you have — separate with commas or new lines
       <textarea bind:value={text} rows="2" placeholder="2 lb chicken thighs, rice, half a bag of spinach, 1 dozen eggs" autocomplete="off" autocorrect="on" spellcheck="true"></textarea>
     </label>

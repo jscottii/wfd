@@ -57,31 +57,32 @@ function mainSlots(grid, meals) {
 function daySlots(grid, m) { const slots = grid.map((d) => [d, m]); const pairs = []; for (let i = 0; i + 1 < slots.length; i += 2) pairs.push(i); return { slots, pairs }; }
 
 /** How many different recipes a week needs: every recipe is eaten at most twice (cooked once, leftovers once). */
-export function recipesNeeded(shape) {
+// repeat: how many times one recipe may show up in a week (1 = no leftovers, 2 = cooked + leftovers once, 3 = the same thing most nights)
+export function recipesNeeded(shape, repeat = 2) {
   const grid = Array.from({ length: shape.to - shape.from + 1 }, () => ({}));
   const m = mainSlots(grid, shape.meals), b = daySlots(grid, 'breakfast');
-  return { main: Math.max(1, m.slots.length - m.pairs.length), breakfast: shape.meals.includes('breakfast') ? b.slots.length - b.pairs.length : 0, snack: shape.snack ? b.slots.length - b.pairs.length : 0 };
+  const n = ({ slots, pairs }) => (repeat <= 1 ? slots.length : repeat >= 3 ? Math.ceil(slots.length / 3) : slots.length - pairs.length);
+  return { main: Math.max(1, n(m)), breakfast: shape.meals.includes('breakfast') ? n(b) : 0, snack: shape.snack ? n(b) : 0 };
 }
 
 /**
  * Place recipes into the week. Each recipe appears at most twice, and only forward in time: cooked, then eaten
  * once more at the next meal (tonight's dinner → tomorrow's lunch). Extra recipes mean fewer leftover meals.
  */
-export function placeRecipes(grid, byKind, meals, snack) {
+export function placeRecipes(grid, byKind, meals, snack, repeat = 2) {
   // Leftovers land on a random later meal 1–3 days after cooking (never before, never the same day, and rarely
   // the very next meal), so the week doesn't read "dinner → tomorrow's lunch" every time.
   const fill = ({ slots, pairs }, list) => {
     if (!slots.length || !list.length) return;
     const dayOf = (i) => grid.indexOf(slots[i][0]);
-    let doubles = Math.max(0, Math.min(pairs.length, slots.length - list.length));
+    let doubles = repeat <= 1 ? 0 : Math.max(0, repeat >= 3 ? slots.length - list.length : Math.min(pairs.length, slots.length - list.length));
     const taken = new Array(slots.length).fill(false);
     let j = 0;
     for (let i = 0; i < slots.length; i++) {
       if (taken[i]) continue;
       const r = list[j++ % list.length];
       const [d, m] = slots[i]; d[m] = r.id; taken[i] = true;
-      if (doubles > 0) {
-        const di = dayOf(i);
+      for (let again = 1, di = dayOf(i); again < Math.max(2, repeat) && doubles > 0; again++) {
         const options = slots.map((_, k) => k).filter((k) => !taken[k] && dayOf(k) > di && dayOf(k) <= di + 3);
         // keep enough room: don't take a slot a later cook day needs if this one has other options
         const notNext = options.filter((k) => k !== i + 1);
@@ -91,8 +92,8 @@ export function placeRecipes(grid, byKind, meals, snack) {
           const weights = pool.map((k) => 1 / (dayOf(k) - di));
           let x = Math.random() * weights.reduce((a, b) => a + b, 0), pick = pool[0];
           for (let t = 0; t < pool.length; t++) { x -= weights[t]; if (x <= 0) { pick = pool[t]; break; } }
-          const [d2, m2] = slots[pick]; d2[m2] = r.id; taken[pick] = true; doubles--;
-        }
+          const [d2, m2] = slots[pick]; d2[m2] = r.id; taken[pick] = true; doubles--; di = dayOf(pick);
+        } else break;
       }
     }
   };

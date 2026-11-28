@@ -79,7 +79,7 @@ export async function planTrip() {
       start, end: s.returnHome ? home : null });   // most trips end at the last store; "come back here" is optional
     res.itemCount = items.length;
     res.alreadyHave = app.items.filter((i) => n[i.id] > 0 && owned(i)).map((i) => i.id);
-    trip.result = res; trip.choice = 'best'; trip.when = Date.now();
+    trip.result = res; trip.choice = ['cheapest', 'fastest'].includes(s.tripChoice) ? s.tripChoice : 'best'; trip.when = Date.now();
     track('trip_planned', { items: items.length });
     await drawLine();
   } catch (e) {

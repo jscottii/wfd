@@ -3,6 +3,7 @@
 </script>
 
 <script>
+  import Hello from '../components/Hello.svelte';
   import Dish from '../components/Dish.svelte';
   import { untrack } from 'svelte';
   import { app, portions, guideFor, loadGuide, updatePrep, toast, removePantry, addPantry, patchPlan, patchCartMeta, updateCartPrep, saveSettings, currentHousehold, track } from '../lib/db.svelte.js';
@@ -406,6 +407,7 @@
 
 <svelte:window onkeydown={focusKey} />
 <div class="page wide" style="padding-bottom:calc(var(--nav) + 90px)">
+  <Hello page="prep" />
   <h1>{!big && mode === 'simple' ? "What's for dinner" : 'Cook day'}</h1>
   {#if !cart}
     <div class="viewnote small">

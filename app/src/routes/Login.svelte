@@ -2,13 +2,14 @@
   import { signIn, signUp, continueAsGuest, sendResetCode, resetWithCode, pendingCode, showCode, cleanCode } from '../lib/db.svelte.js';
   const joining = pendingCode();
   let mode = $state(pendingCode() || location.hash === '#signup' ? 'up' : 'in'), email = $state(localStorage.getItem('mp-email') || ''), password = $state(''), busy = $state(false), err = $state('');
+  let first = $state('');
   let code = $state(''), sent = $state(false), info = $state('');
   const setMode = (m) => { mode = m; err = ''; info = ''; sent = false; code = ''; password = ''; };
   async function go(e) {
     e.preventDefault(); err = '';
     if (mode === 'up' && password.length < 8) { err = 'Use at least 8 characters.'; return; }
     busy = true;
-    try { localStorage.setItem('mp-email', email.trim()); await (mode === 'in' ? signIn : signUp)(email, password); }
+    try { localStorage.setItem('mp-email', email.trim()); await (mode === 'in' ? signIn(email, password) : signUp(email, password, first)); }
     catch (x) { err = x.message; busy = false; }
   }
   async function guest() {
@@ -65,6 +66,7 @@
     </div>
 
     <form class="card" onsubmit={go}>
+      {#if mode === 'up'}<label class="f">First name <span class="muted small">(optional)</span><input autocomplete="given-name" maxlength="30" bind:value={first} placeholder="So we know what to call you" /></label>{/if}
       <label class="f">Email<input type="email" required autocomplete="email" bind:value={email} placeholder="you@example.com" /></label>
       <label class="f">Password<input type="password" required autocomplete={mode === 'in' ? 'current-password' : 'new-password'} bind:value={password} /></label>
       <button type="submit" disabled={busy} style="width:100%">{#if busy}<span class="spinner"></span>{/if} {mode === 'in' ? 'Sign in' : 'Create account'}</button>

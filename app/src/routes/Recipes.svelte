@@ -1,4 +1,5 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import Dish from '../components/Dish.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import { conflicts, prefsOf } from '../lib/diet.js';
@@ -17,6 +18,8 @@
   let findQ = $state('');
   const setView = (v) => { view = v; finding = false; try { sessionStorage.setItem('mp-rec-view', v); } catch {} };
   let { go } = $props();
+  import { ui } from '../lib/ui.svelte.js';
+  $effect(() => { const a = ui.act; if (a === 'recipe') { ui.act = ''; setView('mine'); adding = true; window.scrollTo(0, 0); } else if (a === 'find') { ui.act = ''; setView('find'); } else if (a === 'write') { ui.act = ''; edit(null); window.scrollTo(0, 0); } });
   let adding = $state(false), link = $state(''), linkBusy = $state(false), linkErr = $state(''), finding = $state(false);
   async function fromLink(e) { e.preventDefault(); linkBusy = true; linkErr = ''; try { const [r] = await importRecipeUrl(link.trim()); link = ''; adding = false; open = r.id; toast(`✓ ${r.title} saved`); } catch (x) { linkErr = x.message; } linkBusy = false; }
   let est = $derived(editing ? nutritionOf({ ing: editing.ingText.split('\n').filter(Boolean), servings: Number(editing.servings) || 4 }) : null);
@@ -59,6 +62,7 @@
 </script>
 
 <div class="page">
+  <Hello page="recipes" />
   {#if editing}
     <h1>{editing.id ? 'Edit recipe' : 'New recipe'}</h1>
     <div class="card">
@@ -96,7 +100,7 @@
     </div>
     <div class="row"><button onclick={save} disabled={busy}>{#if busy}<span class="spinner"></span>{/if} Save recipe</button><button class="ghost" onclick={() => (editing = null)}>Cancel</button></div>
   {:else}
-    <div class="spread"><h1>Recipes</h1>{#if view === 'mine'}<button onclick={() => (adding = !adding)}>+ New</button>{/if}</div>
+    <div class="spread"><h1>Recipes</h1></div>
     <div class="seg" style="margin:0 0 10px">
       <button class:on={view === 'mine'} onclick={() => setView('mine')}>📖 My recipes ({app.recipes.length})</button>
       <button class:on={view === 'find'} onclick={() => setView('find')}>🔎 Find new</button>
@@ -104,7 +108,7 @@
     {#if view === 'find'}<FindRecipes initial={findQ} />{:else}
     {#if adding}
       <div class="card nocollapse">
-        <h3 style="margin-top:0">Add a recipe</h3>
+        <div class="spread"><h3 style="margin:0 0 8px">Add a recipe</h3><button class="quiet" aria-label="Close" onclick={() => (adding = false)}>✕</button></div>
         <form class="row" onsubmit={fromLink}>
           <input class="grow" type="url" bind:value={link} placeholder="Paste a link to a recipe" required />
           <button disabled={linkBusy || !link.trim()}>{#if linkBusy}<span class="spinner"></span>{/if} Save from link</button>
@@ -118,10 +122,10 @@
     {#if starter}<Onboarding {go} onclose={() => (starter = false)} />{/if}
     <input placeholder="Search saved recipes" bind:value={q} style="margin:6px 0" />
     <div class="filters">
-      <form class="ingf" onsubmit={addIng}><input placeholder="🥕 Has ingredients: chicken, rice…" bind:value={ingTyped} enterkeyhint="search" onblur={() => ingTyped.trim() && addIng()} /></form>
-      <select bind:value={cuisine} aria-label="Cuisine"><option value="">All cuisines</option>{#each cuisines as c}<option value={c}>{c}</option>{/each}</select>
-      <select bind:value={sortBy} aria-label="Sort"><option value="new">Newest first</option><option value="az">A–Z</option><option value="fav">Favorites first</option><option value="cal">Fewest calories</option><option value="protein">Most protein</option></select>
-      <button class="chip" class:on={favOnly} onclick={() => (favOnly = !favOnly)}>♥ Favorites{favs.size ? ` (${favs.size})` : ''}</button>
+      <form class="ingf" onsubmit={addIng}><input placeholder="🥕 Ingredients" aria-label="Recipes with these ingredients, like chicken, rice" bind:value={ingTyped} enterkeyhint="search" onblur={() => ingTyped.trim() && addIng()} /></form>
+      <select bind:value={cuisine} aria-label="Cuisine"><option value="">Cuisine</option>{#each cuisines as c}<option value={c}>{c}</option>{/each}</select>
+      <select bind:value={sortBy} aria-label="Sort"><option value="new">Newest</option><option value="az">A–Z</option><option value="fav">♥ first</option><option value="cal">Fewest cal</option><option value="protein">Most protein</option></select>
+      <button class="chip favf" class:on={favOnly} aria-label="Favorites only" onclick={() => (favOnly = !favOnly)}>♥{favs.size ? ` ${favs.size}` : ''}</button>
     </div>
     {#if ingWant.length || filtering}
       <div class="row" style="gap:4px;margin:0 0 6px;align-items:center">
@@ -169,9 +173,11 @@
 </div>
 
 <style>
-  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; align-items: center; }
-  .filters .ingf { flex: 1 1 200px; margin: 0; } .filters .ingf input { width: 100%; }
-  .filters select { width: auto; flex: 0 1 auto; }
+  .filters { display: flex; flex-wrap: nowrap; gap: 5px; margin: 0 0 8px; align-items: center; }
+  .filters .ingf { flex: 1 1 0; min-width: 0; margin: 0; } .filters .ingf input { width: 100%; }
+  .filters input, .filters select { font-size: 13.5px; padding: 7px 8px; height: 36px; }
+  .filters select { width: auto; flex: 0 1 auto; min-width: 0; max-width: 30%; padding-right: 4px; }
+  .filters .favf { flex: none; margin: 0; height: 36px; padding: 0 10px; }
   .fav { font-size: 22px; padding: 2px 8px; color: var(--muted); } .fav.on { color: #d93a5a; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   @media (max-width: 480px) { .grid4 { grid-template-columns: repeat(2, 1fr); } }

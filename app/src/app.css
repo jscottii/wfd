@@ -245,3 +245,9 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
 fieldset.locked { border: 0; padding: 0; margin: 0; min-width: 0; }
 fieldset.locked:disabled { opacity: .5; filter: grayscale(.7); pointer-events: none; user-select: none; }
 nav button.dim { opacity: .45; filter: grayscale(1); }
+
+/* the round WFD button sits in a gap in the middle of the bottom bar */
+.fab-gap { flex: 0 0 72px; }
+@media (max-width: 899px) { .sheet { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 36px); z-index: 57; } .sheet-back { z-index: 56; } }
+@media (min-width: 900px) { .fab-gap { display: none; } }
+body { padding-bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 24px); }

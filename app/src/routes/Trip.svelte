@@ -1,4 +1,5 @@
 <script>
+  import Hello from '../components/Hello.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import InstallApp from '../components/InstallApp.svelte';
   import { install } from '../lib/install.svelte.js';
@@ -78,34 +79,24 @@
     extraBusy = false;
   }
   async function changeExtra(id, v) { try { await setExtra(id, v); trip.result = null; planTrip(); } catch (x) { toast(x.message); } }
+  const monday = (d = new Date()) => { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const weekLabel = $derived((() => { const w = app.plan.weekOf; const d = w ? new Date(...w.split('-').map((v, k) => (k === 1 ? v - 1 : +v))) : monday(); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); })());
   const src = (s) => ({ live: 'live', receipt: 'receipt', you: 'yours', estimate: 'est.', unpriced: 'no price yet' })[s] || s;
 </script>
 
 <div class="page">
+  <Hello page="trip" />
   {#if !hideInstall && !install.installed}<div style="position:relative"><InstallApp compact /><button class="quiet small" style="position:absolute;right:4px;bottom:2px" onclick={() => { hideInstall = true; localStorage.setItem('mp-hide-install', '1'); }}>Not now</button></div>{/if}
   {#if ui.cart !== 'home'}
     <div class="spread"><h1>{ui.cart === 'new' ? 'New project list' : app.carts.find((c) => c.id === ui.cart)?.name || 'Project list'}</h1><button class="quiet" onclick={() => openCart('home')}>🏠 Home list</button></div>
     <Carts {go} cartId={ui.cart === 'new' ? '' : ui.cart} oncreated={(id) => openCart(id)} />
   {:else}
-  <div class="spread"><h1>This week's list</h1><button class="quiet" onclick={() => (ui.receipt = true)}>🧾 Scan receipt</button></div>
+  <div class="spread"><h1>{weekLabel} week's list</h1><button class="quiet" onclick={() => (ui.receipt = true)}>🧾 Scan receipt</button></div>
   <p class="muted small">
     {active.length} recipe{active.length === 1 ? '' : 's'}{Object.keys(por).length ? ` · ${Object.values(por).reduce((a, x) => a + x.portions, 0)} portions planned` : ''} · {left} item{left === 1 ? '' : 's'} to buy{bought.length ? `, ${bought.length} already bought` : ''}
   </p>
   <AdSlot slot="shop" format="banner" />
 
-  <form class="card addx" onsubmit={addExtra}>
-    <label class="f" style="margin:0">Add anything to the list, meal or not
-      <div class="row" style="gap:6px;flex-wrap:nowrap"><input class="grow" bind:value={extraText} placeholder="paper towels, 2 milk, bananas…" enterkeyhint="done" autocomplete="off" /><button disabled={extraBusy || !extraText.trim()}>{#if extraBusy}<span class="spinner"></span>{/if} Add</button></div>
-    </label>
-    {#if extras.length}
-      <div class="row" style="gap:6px;margin-top:8px">
-        {#each extras as x (x.it.id)}
-          <span class="xchip">{x.it.name}{#if x.c > 1} ×{x.c}{/if}
-            <button class="quiet" aria-label="One less {x.it.name}" onclick={() => changeExtra(x.it.id, x.c - 1)}>−</button><button class="quiet" aria-label="One more {x.it.name}" onclick={() => changeExtra(x.it.id, x.c + 1)}>+</button><button class="quiet" aria-label="Remove {x.it.name}" onclick={() => changeExtra(x.it.id, 0)}>✕</button></span>
-        {/each}
-      </div>
-    {/if}
-  </form>
 
   <div class="card">
     <div class="small muted" style="margin-bottom:6px">Starting from · {app.settings.returnHome ? (trip.start === 'home' ? 'ends back home' : 'ends back where you started') : 'ends at your last store'} <button class="quiet" style="padding:0 4px;font-size:12px" onclick={() => saveSettings({ returnHome: !app.settings.returnHome }).then(() => trip.result = null)}>{app.settings.returnHome ? 'end at last store instead' : trip.start === 'home' ? 'come back home instead' : 'come back here instead'}</button></div>
@@ -157,6 +148,15 @@
     </div>
     {#if big && cart.length}<p class="small muted" style="margin:-4px 0 8px">{Object.values(por).reduce((a, x) => a + x.portions, 0) ? `About ${fmt((cartTotal + toGo) / Object.values(por).reduce((a, x) => a + x.portions, 0))} per portion so far.` : ''}</p>{/if}
 
+    {#if extras.length}
+      <div class="row" style="gap:6px;margin:0 0 8px;align-items:center"><span class="small muted">Added by you:</span>
+        {#each extras as x (x.it.id)}
+          <span class="xchip">{x.it.name}{#if x.c > 1} ×{x.c}{/if}
+            <button class="quiet" aria-label="One less {x.it.name}" onclick={() => changeExtra(x.it.id, x.c - 1)}>−</button><button class="quiet" aria-label="One more {x.it.name}" onclick={() => changeExtra(x.it.id, x.c + 1)}>+</button><button class="quiet" aria-label="Remove {x.it.name}" onclick={() => changeExtra(x.it.id, 0)}>✕</button></span>
+        {/each}
+      </div>
+    {/if}
+    <p class="small muted" style="margin:0 0 6px">Need something else? Tap the round <b>WFD</b> button to add it.</p>
     {#each plan.stores as st, i}
       {@const loc = byId[st.id]}
       <div class="stop">
