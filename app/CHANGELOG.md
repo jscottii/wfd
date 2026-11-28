@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.22.1 — Nov 28, 2026
+- The Shop map no longer covers the WFD button, the menus or pop-ups.
+- "Retake the welcome questions" is now a full button in More → Settings.
+
 ## 1.22.0 — Nov 28, 2026
 - **Plan's cost bar now matches Shop:** once your trip is planned, the bar shows the trip's own grocery total. While you're still changing meals it estimates the same way the trip does (it was counting some items twice). If you set a weekly budget, it shows how far over or under you are.
 - **The WFD button:** bigger, centered letters, and at most three options with larger, easier-to-read labels, each one about the page you're on (Plan: pick meals, add a recipe, plan ahead · Shop: add to list, switch list, scan a receipt · Pantry: add, scan, use what expires soon · Recipes: add from a link, find new, type one in).
