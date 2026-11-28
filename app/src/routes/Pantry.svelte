@@ -25,6 +25,7 @@
   const PLACES = [['fridge', '🧊 Fridge'], ['freezer', '❄️ Freezer'], ['pantry', '🥫 Pantry'], ['counter', '🧺 Counter']];
   
 
+  let adding = $state(!app.pantry.length), showSoon = $state(false);
   let text = $state(''), busy = $state(false), err = $state(''), q = $state(''), editing = $state(''), showQuick = $state(false);
   let preview = $derived(text.trim() ? parseAdd(text, app.items) : []);
   let soon = $derived(app.pantry.filter((p) => { const d = daysLeft(p.use_by); return d != null && d <= 3; }).sort((a, b) => (a.use_by || '').localeCompare(b.use_by || '')));
@@ -57,58 +58,32 @@
   <div class="spread"><h1>Pantry</h1><button class="quiet" onclick={() => go('plan')}>Plan from it →</button></div>
   {#if isGuest()}<GuestNote text="The pantry is for accounts. You can look around, but you'll need an account to add or change things." />{/if}
   <fieldset class="locked" disabled={isGuest()}>
-  <button class="ghost" style="width:100%;margin-bottom:8px" onclick={() => (scanning = true)}>📷 Add with the camera — scan barcodes or snap the fridge</button>
-  {#if scanning}<PantryScan onclose={() => (scanning = false)} />{/if}
-  <p class="muted small">What you already have. Trips skip it, and the Plan tab suggests recipes that use it up. Things you check off on a trip or a receipt are added for you.</p>
   {#if err}<div class="err">⚠️ {err}</div>{/if}
-  <AdSlot slot="pantry" format="banner" />
-
-  <form class="card" onsubmit={addTyped}>
-    <label class="f">Add what you have — separate with commas or new lines
-      <textarea bind:value={text} rows="2" placeholder="2 lb chicken thighs, rice, half a bag of spinach, 1 dozen eggs" autocomplete="off" autocorrect="on" spellcheck="true"></textarea>
-    </label>
-    {#if ideasFor.length}<div class="row" style="gap:4px;margin:-4px 0 8px"><span class="small muted">Did you mean</span>{#each ideasFor as n}<button type="button" class="chip" onclick={() => pickIdea(n)}>{n}</button>{/each}</div>{/if}
-    {#if preview.length}
-      <div class="row" style="gap:4px;margin-bottom:8px">
-        {#each preview as r}<span class="pill" class:live={r.item_id}>{r.amount ? showAmount(r.amount, mode) + ' ' : ''}{r.name}{r.item_id ? '' : ' (new)'}{r.fixedFrom ? ` ← “${r.fixedFrom}”` : ''}</span>{/each}
+  {#if soon.length}
+    <div class="soonline">
+      <span>⏳ <b>{soon.length} item{soon.length === 1 ? '' : 's'}</b> expiring soon</span>
+      <span class="row" style="gap:4px"><button class="quiet" onclick={() => (showSoon = !showSoon)}>{showSoon ? 'Hide' : 'Update'}</button><button class="quiet" onclick={() => go('plan')}>Use in this week's plan →</button></span>
+    </div>
+    {#if showSoon}
+      <div class="card" style="margin-top:6px">
+        {#each soon as p (p.id)}
+          <div class="list-row"><span class="grow"><b>{p.name}</b> <span class="small" style="color:var(--accent)">{when(p)}</span></span>
+            <input type="date" value={p.use_by || ''} aria-label="Use by for {p.name}" onchange={(e) => set(p, { use_by: e.currentTarget.value || null })} style="width:auto" />
+            <button class="quiet" aria-label="Used up" title="Used up — remove" onclick={() => drop(p)}>✕</button></div>
+        {/each}
+        <p class="small muted" style="margin:6px 0 0">Change a date, or ✕ what's used up or thrown out.</p>
       </div>
     {/if}
-    <div class="row">
-      <button type="submit" disabled={busy || !preview.length}>{#if busy}<span class="spinner"></span>{/if} Add {preview.length || ''}</button>
-      <button type="button" class="ghost" onclick={() => (showQuick = !showQuick)}>{showQuick ? 'Hide' : 'Pick from'} your usual items</button>
-    </div>
-    <p class="small muted" style="margin-bottom:0">Green = matched to an item on your shopping list, so the trip knows to skip it.</p>
-  </form>
-
-  {#if showQuick}
-    <div class="card">
-      <h3>Tap what you have</h3>
-      {#each quick as [cat, list]}
-        <p class="small muted" style="margin:10px 0 2px">{cat}</p>
-        {#each list as i}<button class="chip" onclick={() => addItem(i)}>+ {i.name}</button>{/each}
-      {/each}
-      {#if !quick.length}<p class="small muted">Everything on your list is already in the pantry.</p>{/if}
-    </div>
-  {/if}
-
-  {#if soon.length}
-    <div class="card" style="border-color:var(--accent)">
-      <h3>⏳ Use soon</h3>
-      {#each soon as p}
-        <div class="list-row"><span><b>{p.name}</b> <span class="small" style="color:var(--accent)">{when(p)}</span></span><button class="quiet" onclick={() => go('plan')}>Find a recipe →</button></div>
-      {/each}
-    </div>
   {/if}
 
   {#if app.pantry.length > 8}<input placeholder="Search your pantry" bind:value={q} style="margin:8px 0" />{/if}
-
-  {#if !app.pantry.length}
-    <div class="note">Your pantry is empty. Type a few things above, or tap <b>Pick from your usual items</b>. Start with the 10–20 things you always have.</div>
+  {#if !app.pantry.length && !adding}
+    <div class="note">Your pantry is empty. Tap <b>+</b> below to add the 10–20 things you always have.</div>
   {/if}
 
-  {#each byPlace as g}
-    <div class="card">
-      <h3>{g.label} <span class="small muted" style="font-weight:400">({g.rows.length})</span></h3>
+  {#each byPlace as g (g.k)}
+    <details class="card pl-sec" open={!!q || byPlace.length === 1}>
+      <summary><b>{g.label}</b> <span class="small muted">({g.rows.length}{g.rows.some((p) => (daysLeft(p.use_by) ?? 99) <= 3) ? ` · ${g.rows.filter((p) => (daysLeft(p.use_by) ?? 99) <= 3).length} use soon` : ''})</span></summary>
       {#each g.rows as p (p.id)}
         {@const a = splitContainer(p.amount, mode)}
         {@const needSize = CONTAINERS.includes(a.unit) && !a.size}
@@ -139,9 +114,57 @@
           {/if}
         </div>
       {/each}
-    </div>
+    </details>
   {/each}
+
+  <div class="addwrap"><button class="addbtn" class:on={adding} onclick={() => (adding = !adding)} aria-label={adding ? 'Close adding' : 'Add to your pantry'} aria-expanded={adding}>{adding ? '×' : '+'}</button></div>
+  {#if adding}
+    <button class="ghost" style="width:100%;margin-bottom:8px" onclick={() => (scanning = true)}>📷 Add with the camera — scan barcodes or snap the fridge</button>
+  <form class="card" onsubmit={addTyped}>
+    <label class="f">Add what you have — separate with commas or new lines
+      <textarea bind:value={text} rows="2" placeholder="2 lb chicken thighs, rice, half a bag of spinach, 1 dozen eggs" autocomplete="off" autocorrect="on" spellcheck="true"></textarea>
+    </label>
+    {#if ideasFor.length}<div class="row" style="gap:4px;margin:-4px 0 8px"><span class="small muted">Did you mean</span>{#each ideasFor as n}<button type="button" class="chip" onclick={() => pickIdea(n)}>{n}</button>{/each}</div>{/if}
+    {#if preview.length}
+      <div class="row" style="gap:4px;margin-bottom:8px">
+        {#each preview as r}<span class="pill" class:live={r.item_id}>{r.amount ? showAmount(r.amount, mode) + ' ' : ''}{r.name}{r.item_id ? '' : ' (new)'}{r.fixedFrom ? ` ← “${r.fixedFrom}”` : ''}</span>{/each}
+      </div>
+    {/if}
+    <div class="row">
+      <button type="submit" disabled={busy || !preview.length}>{#if busy}<span class="spinner"></span>{/if} Add {preview.length || ''}</button>
+      <button type="button" class="ghost" onclick={() => (showQuick = !showQuick)}>{showQuick ? 'Hide' : 'Pick from'} your usual items</button>
+    </div>
+    <p class="small muted" style="margin-bottom:0">Green = matched to an item on your shopping list, so the trip knows to skip it.</p>
+  </form>
+
+  {#if showQuick}
+    <div class="card">
+      <h3>Tap what you have</h3>
+      {#each quick as [cat, list]}
+        <p class="small muted" style="margin:10px 0 2px">{cat}</p>
+        {#each list as i}<button class="chip" onclick={() => addItem(i)}>+ {i.name}</button>{/each}
+      {/each}
+      {#if !quick.length}<p class="small muted">Everything on your list is already in the pantry.</p>{/if}
+    </div>
+  {/if}
+
+  {/if}
+  {#if scanning}<PantryScan onclose={() => (scanning = false)} />{/if}
+  <AdSlot slot="pantry" format="banner" />
   {#if app.pantry.length}<p class="small muted">Tap an item to change its amount, where it lives, or its use-by date. {relative ? 'Low or Out puts it back on the shopping list.' : 'Fill in how much you have — for a can, jar or bag, also its size. Set it to 0, or tap + List, to put it on the shopping list.'} Change how amounts work in More → Settings.</p>{/if}
   {#if app.pantry.length > 6}<AdSlot slot="pantry-bottom" format="rect" />{/if}
   </fieldset>
 </div>
+
+<style>
+  .soonline { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; background: var(--accent-soft); color: var(--accent-dark); border-radius: 12px; padding: 9px 12px; margin: 4px 0 10px; font-size: 14px; }
+  .soonline button { padding: 2px 6px; font-weight: 600; }
+  .pl-sec > summary { cursor: pointer; display: flex; gap: 6px; align-items: center; list-style: none; }
+  .pl-sec > summary::-webkit-details-marker { display: none; }
+  .pl-sec > summary::after { content: '▾'; margin-left: auto; color: var(--muted); }
+  .pl-sec[open] > summary { margin-bottom: 6px; }
+  .pl-sec[open] > summary::after { content: '▴'; }
+  .addwrap { display: flex; justify-content: center; margin: 14px 0 10px; }
+  .addbtn { width: 52px; height: 52px; border-radius: 50%; font-size: 30px; line-height: 1; padding: 0; box-shadow: 0 4px 14px rgba(31, 95, 209, .3); }
+  .addbtn.on { background: var(--card); color: var(--accent); border: 1px solid var(--line); box-shadow: none; }
+</style>

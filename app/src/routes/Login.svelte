@@ -36,7 +36,7 @@
 
 <div class="page" style="max-width:420px;padding-top:12vh">
   <img src="icon.svg" alt="" width="64" height="64" style="border-radius:14px" />
-  <h1>What's for Dinner</h1>
+  <h1>WFD Meals</h1>
   <p class="muted">Plan the week, shop it in the fewest, cheapest stops, and cook it all at once.</p>
   {#if joining}<div class="ok small">You're joining a household with code <b>{showCode(cleanCode(joining))}</b>. Create an account (or sign in) and you'll be added.</div>{/if}
   {#if mode === 'reset'}

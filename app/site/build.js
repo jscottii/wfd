@@ -39,10 +39,10 @@ footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;font
 @media(max-width:600px){.top nav a.hide{display:none}.hero h1{font-size:32px}h1{font-size:28px}.shots img{height:360px}}
 `;
 
-const nav = `<header class="top"><div class="wrap"><a class="brand" href="/"><img src="/icon.svg" alt="">WFD</a>
+const nav = `<header class="top"><div class="wrap"><a class="brand" href="/"><img src="/icon.svg" alt="">WFD Meals</a>
 <nav><a class="hide" href="/recipes/">Recipes</a><a class="hide" href="/guides/">Guides</a><a class="hide" href="/about/">About</a><a class="btn sm" href="/#login">Open WFD</a></nav></div></header>`;
 const foot = `<footer><div class="wrap"><a href="/recipes/">Recipes</a><a href="/guides/">Guides</a><a href="/about/">About</a><a href="/privacy.html">Privacy</a><a href="/support.html">Help</a><a href="mailto:support@wfdmeals.app">support@wfdmeals.app</a>
-<p>© ${new Date().getFullYear()} WFD — What's for Dinner. Nutrition is estimated from the ingredients and isn't medical advice.</p></div></footer>`;
+<p>© ${new Date().getFullYear()} WFD Meals. Nutrition is estimated from the ingredients and isn't medical advice.</p></div></footer>`;
 
 /** An AdSense ad (only on content pages, never next to buttons). */
 const ad = (client, slot) => (client && slot ? `<div class="ad"><div class="lbl">Advertisement</div><ins class="adsbygoogle" style="display:block" data-ad-client="${client}" data-ad-slot="${slot}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>` : '');
@@ -90,15 +90,15 @@ ${r.keeps ? `<p><b>Keeps:</b> ${esc(r.keeps)}</p>` : ''}
 ${tryBox('Add this to your week, get a shopping list sorted by store with prices, and cook it step by step with timers.')}
 ${ad(o.ads.client, o.ads.slot)}`;
   const jsonld = { '@context': 'https://schema.org', '@type': 'Recipe', name: r.title, description: r.intro, recipeYield: `${r.serves} servings`, recipeCategory: r.meal, recipeCuisine: r.cuisine,
-    recipeIngredient: r.ing, recipeInstructions: r.steps.map((t) => ({ '@type': 'HowToStep', text: t })), author: { '@type': 'Organization', name: 'WFD — What\'s for Dinner' },
+    recipeIngredient: r.ing, recipeInstructions: r.steps.map((t) => ({ '@type': 'HowToStep', text: t })), author: { '@type': 'Organization', name: 'WFD Meals' },
     ...(n ? { nutrition: { '@type': 'NutritionInformation', calories: `${n.kcal} calories`, proteinContent: `${n.protein} g`, carbohydrateContent: `${n.carbs} g`, fatContent: `${n.fat} g` } } : {}) };
-  return page({ title: `${r.title} · WFD`, desc: r.intro, path: `/recipes/${r.slug}/`, body, site: o.site, ads: o.ads, jsonld });
+  return page({ title: `${r.title} · WFD Meals`, desc: r.intro, path: `/recipes/${r.slug}/`, body, site: o.site, ads: o.ads, jsonld });
 }
 
 function guidePage(g, o) {
   const body = `<p class="small" style="margin-top:18px"><a href="/guides/">← All guides</a></p><h1>${esc(g.title)}</h1><p class="muted">${esc(g.summary)}</p>
 ${g.body}${ad(o.ads.client, o.ads.slot)}${tryBox('Plan the week, shop it in the fewest, cheapest stops, and cook it all at once.')}`;
-  return page({ title: `${g.title} · WFD`, desc: g.summary, path: `/guides/${g.slug}/`, body, site: o.site, ads: o.ads });
+  return page({ title: `${g.title} · WFD Meals`, desc: g.summary, path: `/guides/${g.slug}/`, body, site: o.site, ads: o.ads });
 }
 
 const recipeTile = (r) => `<a class="card tile" href="/recipes/${r.slug}/"><h3>${esc(r.title)}</h3><p class="muted">${esc(r.meal)} · ${esc(r.time)} · serves ${r.serves}</p></a>`;
@@ -143,9 +143,9 @@ export function publicFiles({ site, ads }) {
     body: `<h1 style="margin-top:24px">Recipes</h1><p class="muted">Weeknight dinners and make-ahead breakfasts, written for real weeknights. Each one has estimated nutrition and a flow chart you can cook from.</p><div class="grid">${RECIPES.map(recipeTile).join('')}</div>${ad(ads.client, ads.slot)}` })]);
   files.push(['guides/index.html', page({ title: 'Guides · WFD', desc: 'Short guides to planning meals, prepping ahead and spending less on groceries.', path: '/guides/', site, ads,
     body: `<h1 style="margin-top:24px">Guides</h1><p class="muted">Short, practical guides to planning, prepping and shopping.</p><div class="grid">${GUIDES.map(guideTile).join('')}</div>` })]);
-  files.push(['about/index.html', page({ title: 'About WFD', desc: 'WFD — What\'s for Dinner is a small, independent app for planning, shopping and cooking a week of meals.', path: '/about/', site, ads,
-    body: `<h1 style="margin-top:24px">About WFD</h1>
-<p><b>WFD — What's for Dinner</b> is a small, independent app for families and anyone who cooks for a household. It started from a simple frustration: deciding what to make every night, then making three trips to the store to make it.</p>
+  files.push(['about/index.html', page({ title: 'About WFD Meals', desc: 'WFD Meals is a small, independent app for planning, shopping and cooking a week of meals.', path: '/about/', site, ads,
+    body: `<h1 style="margin-top:24px">About WFD Meals</h1>
+<p><b>WFD Meals</b> is a small, independent app for families and anyone who cooks for a household. It started from a simple frustration: deciding what to make every night, then making three trips to the store to make it.</p>
 <p>WFD puts the whole week in one place. You plan the meals once; WFD builds one shopping list, prices it at the stores near you and finds the cheapest trip, then turns the week's recipes into a single cook-day plan. It keeps track of your pantry, so you buy only what you need.</p>
 <h2>What it costs</h2><p>WFD is free to use, with ads. <b>WFD Plus</b> removes the ads. You can try everything without an account; guest data is kept for 14 days.</p>
 <h2>The recipes and guides</h2><p>The recipes and guides on this site are written for WFD. Nutrition is estimated from the ingredients and is a guide, not medical advice.</p>

@@ -1,6 +1,6 @@
 {
   "appId": "com.jscottii.wfd",
-  "appName": "WFD",
+  "appName": "WFD Meals",
   "webDir": "dist-native",
   "backgroundColor": "#f7f3ec",
   "ios": {

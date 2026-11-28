@@ -1,9 +1,21 @@
-# WFD — What's for Dinner · Changelog
+# WFD Meals · Changelog
 
 Versions are MAJOR.MINOR.PATCH:
 - **PATCH** (1.1.x) — small tweaks and fixes.
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
+
+## 1.20.0 — Nov 27, 2026
+- **WFD Meals:** the app's official name, with a new logo ("meals" under the WFD letters) on the app icon, home screen, website and Chrome extension.
+- **Plan:** swipe a meal left to empty just that spot, or right to take it out of the week's plan, with Undo. Tap a meal for a quick preview: ingredients, steps, the flow chart and nutrition.
+- **Shop:** starting from "Here" or a typed address now finds stores near that place, not near home, and the route ends where you started.
+- **Delivery:** no store sign-ins anymore. Copy your list, open the grocery app you already use (Instacart, Walmart, Amazon Fresh, Target, Safeway…) and paste it in.
+- **Your own items on the list:** add anything you want to buy, even if it's not for a meal. It stays on the list until you buy it.
+- **Prep:** open sections are shaded so you can tell what's open, and a note at the top says which view you're in, with a switch to the other.
+- **Settings:** "Who you cook for" is now "How much detail": Simplified, or Give me all the details. There's now just one Prices section.
+- **Pantry:** your pantry comes first, with places folded up to keep it tidy. One line shows how many things expire soon, with Update and "Use in this week's plan". Add items with the + button. No cart button on this page.
+- **Recipes:** filter by ingredients you type in and by cuisine, sort (newest, A–Z, favorites, calories, protein), and tap ♡ to favorite.
+- Chrome extension 1.2: new name and icon.
 
 ## 1.19.0 — Nov 26, 2026
 - **Save from more websites:** pasting a recipe link now works on sites that lay their recipe out their own way (an "Ingredients" list with "Directions" or "Step 1, Step 2…"), not just the sites that publish it in Google's recipe format.

@@ -184,6 +184,16 @@ select.inl { padding-right: 2px; }
 .wday { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: start; }
 .wday-name { font-weight: 800; color: var(--accent); padding-top: 10px; }
 .wslots { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.swrap { position: relative; border-radius: 12px; overflow: hidden; }
+.swrap > .sw-l, .swrap > .sw-r { position: absolute; inset: 0; display: none; align-items: center; padding: 0 14px; font-size: 13px; font-weight: 700; color: #fff; }
+.swrap > .sw-l { background: #8a6d1f; justify-content: flex-start; }
+.swrap > .sw-r { background: #b3261e; justify-content: flex-end; }
+.swrap[data-swipe^="right"] > .sw-l, .swrap[data-swipe^="left"] > .sw-r { display: flex; }
+.swrap[data-swipe$="-soft"] > .sw-l, .swrap[data-swipe$="-soft"] > .sw-r { opacity: .55; }
+.swrap > .wslot { position: relative; width: 100%; }
+.undo-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 16px); z-index: 60; background: #1b2433; color: #fff;
+  border-radius: 12px; padding: 10px 14px; display: flex; gap: 14px; align-items: center; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: calc(100vw - 24px); }
+.undo-bar button { color: #9cc0ff; font-weight: 700; padding: 0; }
 .wslot { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-weight: 400; min-height: 64px; justify-content: flex-start; }
 .wslot:hover { border-color: var(--accent); }
 .wslot.empty { border-style: dashed; background: transparent; }

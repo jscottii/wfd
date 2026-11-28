@@ -3,7 +3,7 @@
   import InstallApp from '../components/InstallApp.svelte';
   import { install } from '../lib/install.svelte.js';
   let hideInstall = $state(localStorage.getItem('mp-hide-install') === '1' || matchMedia('(min-width: 900px)').matches);
-  import { app, saveSettings, setBuy, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
+  import { app, saveSettings, setBuy, addExtras, setExtra, need, portions, itemById, setHave, toast, owned, updatePantry, tripCart, editPurchase } from '../lib/db.svelte.js';
   import CartEditor from '../components/CartEditor.svelte';
   import OrderBar from '../components/OrderBar.svelte';
   import { linesFor } from '../lib/order.js';
@@ -68,6 +68,16 @@
   async function untick(id) { try { await setHave([id], false); } catch (e) { toast(e.message); } }
   async function here() { try { await useMyLocation(); trip.result = null; planTrip(); } catch (e) { trip.error = e.message; } }
   function setStart(m) { trip.start = m; if (m === 'home') { trip.result = null; planTrip(); } }
+  // things to buy that aren't part of a meal
+  let extraText = $state(''), extraBusy = $state(false);
+  const extras = $derived(Object.entries(app.plan.extra || {}).map(([id, c]) => ({ it: itemById(id), c })).filter((x) => x.it));
+  async function addExtra(e) {
+    e?.preventDefault(); if (!extraText.trim()) return;
+    extraBusy = true;
+    try { const a = await addExtras(extraText); extraText = ''; toast(`✓ Added ${a.join(', ')}`); trip.result = null; planTrip(); } catch (x) { toast(x.message); }
+    extraBusy = false;
+  }
+  async function changeExtra(id, v) { try { await setExtra(id, v); trip.result = null; planTrip(); } catch (x) { toast(x.message); } }
   const src = (s) => ({ live: 'live', receipt: 'receipt', you: 'yours', estimate: 'est.', unpriced: 'no price yet' })[s] || s;
 </script>
 
@@ -83,8 +93,22 @@
   </p>
   <AdSlot slot="shop" format="banner" />
 
+  <form class="card addx" onsubmit={addExtra}>
+    <label class="f" style="margin:0">Add anything to the list, meal or not
+      <div class="row" style="gap:6px;flex-wrap:nowrap"><input class="grow" bind:value={extraText} placeholder="paper towels, 2 milk, bananas…" enterkeyhint="done" autocomplete="off" /><button disabled={extraBusy || !extraText.trim()}>{#if extraBusy}<span class="spinner"></span>{/if} Add</button></div>
+    </label>
+    {#if extras.length}
+      <div class="row" style="gap:6px;margin-top:8px">
+        {#each extras as x (x.it.id)}
+          <span class="xchip">{x.it.name}{#if x.c > 1} ×{x.c}{/if}
+            <button class="quiet" aria-label="One less {x.it.name}" onclick={() => changeExtra(x.it.id, x.c - 1)}>−</button><button class="quiet" aria-label="One more {x.it.name}" onclick={() => changeExtra(x.it.id, x.c + 1)}>+</button><button class="quiet" aria-label="Remove {x.it.name}" onclick={() => changeExtra(x.it.id, 0)}>✕</button></span>
+        {/each}
+      </div>
+    {/if}
+  </form>
+
   <div class="card">
-    <div class="small muted" style="margin-bottom:6px">Starting from · {app.settings.returnHome ? 'ends back home' : 'ends at your last store'} <button class="quiet" style="padding:0 4px;font-size:12px" onclick={() => saveSettings({ returnHome: !app.settings.returnHome }).then(() => trip.result = null)}>{app.settings.returnHome ? 'end at last store instead' : 'come back home instead'}</button></div>
+    <div class="small muted" style="margin-bottom:6px">Starting from · {app.settings.returnHome ? (trip.start === 'home' ? 'ends back home' : 'ends back where you started') : 'ends at your last store'} <button class="quiet" style="padding:0 4px;font-size:12px" onclick={() => saveSettings({ returnHome: !app.settings.returnHome }).then(() => trip.result = null)}>{app.settings.returnHome ? 'end at last store instead' : trip.start === 'home' ? 'come back home instead' : 'come back here instead'}</button></div>
     <div class="seg">
       <button class:on={trip.start === 'home'} onclick={() => setStart('home')}>🏠 Home</button>
       <button class:on={trip.start === 'here'} onclick={here}>📍 Here</button>
@@ -92,11 +116,11 @@
     </div>
     {#if trip.start === 'typed'}
       <div class="row" style="margin-top:8px">
-        <input class="grow" placeholder="e.g. 1 Broadway, Oakland" bind:value={trip.typed} onkeydown={(e) => e.key === 'Enter' && planTrip()} />
+        <input class="grow" placeholder="A city or address: Sacramento, or 1 Broadway, Oakland" bind:value={trip.typed} onkeydown={(e) => e.key === 'Enter' && planTrip()} />
         <button onclick={() => { trip.result = null; planTrip(); }}>Go</button>
       </div>
     {/if}
-    <p class="small muted" style="margin:8px 0 0">Each chain uses its location nearest to where you start.</p>
+    <p class="small muted" style="margin:8px 0 0">{trip.start === 'home' ? 'Each chain uses its location nearest to home.' : 'Uses each chain’s store nearest to where you start (not near home); chains with no store nearby are left out.'}</p>
   </div>
 
   {#if trip.error}<div class="err">⚠️ {trip.error} <button class="quiet" onclick={() => { trip.error = ''; planTrip(); }}>Try again</button></div>{/if}
@@ -194,6 +218,8 @@
 </div>
 
 <style>
+  .xchip { display: inline-flex; align-items: center; gap: 2px; background: var(--tint); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; }
+  .xchip button { padding: 2px 6px; font-size: 14px; }
   .buyqty { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 0 2px; vertical-align: middle; }
   .buyqty button { padding: 2px 8px; font-size: 16px; line-height: 1; }
   .buyqty b { min-width: 1.4em; text-align: center; font-size: 13px; }

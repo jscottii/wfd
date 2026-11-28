@@ -32,14 +32,18 @@ export async function planTrip() {
     if (!items.length) { trip.result = { empty: true }; return; }
     const enabled = (Array.isArray(s.enabledStores) ? s.enabledStores : String(s.enabledStores || '').split(',')).map((x) => x.trim()).filter(Boolean);
     const stores = app.stores.filter((st) => st.enabled !== false && !!st.address && enabled.includes(st.id) && (!st.bulk || s.costcoMember));
-    const start = startAddress(), home = s.homeAddress;
-    const nm = await nearestAndMatrix(start, home, stores, s.nearestStores !== false, (t) => (trip.step = t));
+    // starting somewhere other than home ("Here" or a typed address): use the stores near that place, and "come back" means back there
+    const away = trip.start !== 'home';
+    const start = startAddress(), home = away ? start : s.homeAddress;
+    const nm = await nearestAndMatrix(start, home, stores, away || s.nearestStores !== false, (t) => (trip.step = t), { away, radius: Number(s.storeRadius) || 25 });
     trip.geo = nm.start; trip.stores = nm.stores;
     if (trip.start === 'home') syncPriceWatch(items.map((i) => i.id), nm.start).catch(() => {});
     // stores beyond your store range (Settings, 25 mi by default) are left out
     const range = Number(s.storeRadius) || 25;
     const near = nm.stores.filter((st) => !st.lat || !nm.start || haversineMi(nm.start, st) <= range);
-    if (!near.length) throw new Error(`None of your stores are within ${range} miles. Open More → Stores → “Find stores near me”, or widen the store range in Settings.`);
+    if (!near.length) throw new Error(away
+      ? `None of your store chains have a location within ${range} miles of ${trip.start === 'here' ? 'where you are' : '“' + trip.typed.trim() + '”'}. Try a nearby city, or widen the store range in Settings.`
+      : `None of your stores are within ${range} miles. Open More → Stores → “Find stores near me”, or widen the store range in Settings.`);
     if (near.length < nm.stores.length) {
       const keep = new Set(['start', 'end', ...near.map((x) => x.id)]), idx = nm.matrix.nodes.map((id, i) => (keep.has(id) ? i : -1)).filter((i) => i >= 0);
       nm.matrix = { nodes: idx.map((i) => nm.matrix.nodes[i]), dist: idx.map((i) => idx.map((j) => nm.matrix.dist[i][j])), dur: idx.map((i) => idx.map((j) => nm.matrix.dur[i][j])) };
@@ -92,8 +96,9 @@ export async function drawLine() {
   const p = chosen(); trip.line = null;
   if (!p || !trip.geo) return;
   const byId = Object.fromEntries(trip.stores.map((s) => [s.id, s]));
-  const homeGeo = await geocode(app.settings.homeAddress).catch(() => null);
-  const pts = [trip.geo, ...p.stores.map((s) => byId[s.id]), homeGeo || trip.geo].filter(Boolean);
+  // the line ends at the last store, unless "come back" is on: then back home, or back to where you started
+  const back = app.settings.returnHome ? (trip.start === 'home' ? await geocode(app.settings.homeAddress).catch(() => null) : trip.geo) : null;
+  const pts = [trip.geo, ...p.stores.map((s) => byId[s.id]), back].filter(Boolean);
   try { trip.line = { ...(await routeLine(pts)), pts }; } catch (_) { trip.line = { coords: null, pts }; }
 }
 

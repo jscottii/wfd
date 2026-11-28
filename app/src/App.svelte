@@ -85,7 +85,7 @@
     {:else}<Plan {go} />{/if}
     <SiteFooter {page} {go} />
   {/key}
-  {#if !['prep', 'more', 'admin'].includes(page)}
+  {#if !['prep', 'more', 'admin', 'pantry'].includes(page)}
     <button class="cart-fab" aria-label="Shopping carts" onclick={() => (ui.cartPicker = !ui.cartPicker)}><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5h2.6l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.2l1.6-6.8H6.2"/><circle cx="9.6" cy="20" r="1.6" fill="#fff"/><circle cx="17.4" cy="20" r="1.6" fill="#fff"/></svg>{#if app.carts.length}<span class="fab-badge">{app.carts.length + 1}</span>{/if}</button>
   {/if}
   {#if ui.cartPicker}
@@ -108,7 +108,7 @@
   <PullRefresh />
   {#if hhOpen}<HouseholdPicker {go} onclose={() => (hhOpen = false)} />{/if}
   <nav class="tabs">
-    <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />What's for Dinner{#if app.households.length}<button class="hh" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
+    <div class="brand"><img src="icon.svg" alt="" width="26" height="26" style="vertical-align:-7px;margin-right:8px;border-radius:6px" />WFD Meals{#if app.households.length}<button class="hh" onclick={() => (hhOpen = true)} aria-label="Switch or add a household">🏠 {currentHousehold()?.name} ▾</button>{/if}</div>
     {#each TABS as [k, ic, label]}<button class:on={page === k} class:dim={k === 'pantry' && isGuest()} onclick={() => go(k)}><span class="ic">{ic}</span>{label}</button>{/each}
   </nav>
 {/if}

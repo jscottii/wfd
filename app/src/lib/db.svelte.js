@@ -1,4 +1,5 @@
 // Data layer: Supabase auth, loading, live sync, and every write the app makes.
+import { parseAdd } from './pantry.js';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, APP_URL } from './config.js';
 import { estimateFor, chainFactor } from './estimate.js';
@@ -33,6 +34,8 @@ export function need() {
     const est = estimateFor(it.name);
     if (SHELF.test(it.name) && (!est || est.rough || ONE_WILL_DO.test(est.pack))) n[id] = 1;
   }
+  // things you added to the list yourself, not tied to any meal
+  for (const [id, v] of Object.entries(app.plan.extra || {})) if (v > 0 && itemById(id)) n[id] = (n[id] || 0) + v;
   // amounts you changed on the shopping list win (0 = don't buy it this week)
   for (const [id, v] of Object.entries(app.plan.buy || {})) { if (!(id in n)) continue; if (v > 0) n[id] = v; else delete n[id]; }
   return n;
@@ -135,6 +138,32 @@ export async function setHouseholdSize(n) {
 }
 /** Change a few fields of this week's plan (e.g. swap two nights, the serving time, where you're cooking). */
 /** Change how many of an item to buy this week (null = back to what the recipes need). */
+/** Add things to the shopping list that aren't part of any meal ("paper towels, 2 milk"). Matches your items (typos are fine) or makes new ones. */
+export async function addExtras(text) {
+  const extra = { ...(app.plan.extra || {}) }, buy = { ...(app.plan.buy || {}) }, added = [];
+  for (const row of parseAdd(text, app.items)) {
+    let id = row.item_id;
+    if (!id) {
+      const base = row.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'item';
+      id = base; let k = 2; while (itemById(id)) id = base + '-' + k++;
+      const word = row.name.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3).pop() || row.name.toLowerCase();
+      const r = { id, cat: estimateFor(row.name)?.cat || 'Other', name: row.name.charAt(0).toUpperCase() + row.name.slice(1), qty: '1', q: row.name.toLowerCase(), must: [word], units: 1 };
+      const { error } = await sb.from('items').insert(r); if (error) fail(error);
+      app.items.push(toItem(r));
+    }
+    const count = Math.max(1, Math.round(Number(String(row.amount).match(/^\d+/)?.[0]) || 1));
+    extra[id] = (extra[id] || 0) + count;
+    if (buy[id] === 0) delete buy[id];
+    added.push(itemById(id)?.name || row.name);
+  }
+  if (added.length) await patchPlan({ extra, buy });
+  return added;
+}
+export async function setExtra(id, n) {
+  const extra = { ...(app.plan.extra || {}) };
+  if (n > 0) extra[id] = Math.round(n); else delete extra[id];
+  await patchPlan({ extra });
+}
 export async function setBuy(id, n) {
   const buy = { ...(app.plan.buy || {}) };
   if (n == null) delete buy[id]; else buy[id] = Math.max(0, Math.round(n));
@@ -439,7 +468,7 @@ export async function startUpcoming(start) {
 export async function savePlan({ household, shape, days, selected, startNewWeek, pantry, sourceUrl }) {
   const { weeks: _old, ...rest } = app.plan;
   const plan = { ...rest, household: Number(household) || 3, days, ...(shape ? { shape } : {}) };
-  if (startNewWeek) { plan.prepDone = {}; plan.timers = {}; plan.buy = {}; }
+  if (startNewWeek) { plan.prepDone = {}; plan.timers = {}; plan.buy = {}; plan.extra = Object.fromEntries(Object.entries(plan.extra || {}).filter(([id]) => itemById(id) && !itemById(id).have)); }   // extras you haven't bought yet carry over
   const { error } = await sb.from('week_plan').upsert({ household_id: app.household, data: plan, updated_at: new Date().toISOString() });
   if (error) fail(error);
   app.plan = plan;

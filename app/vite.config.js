@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: "WFD — What's for Dinner", short_name: 'WFD', description: 'Plan the week, shop it in the fewest, cheapest stops, and cook it all at once.',
+        name: 'WFD Meals', short_name: 'WFD Meals', description: 'Plan the week, shop it in the fewest, cheapest stops, and cook it all at once.',
         theme_color: '#1f5fd1', background_color: '#f6f4ee', display: 'standalone', start_url: BASE, scope: BASE,
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },

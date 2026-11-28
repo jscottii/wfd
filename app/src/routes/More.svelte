@@ -24,7 +24,7 @@
   $effect(() => { const hid = app.household; if (tab === 'settings' && hid && codeFor !== hid) { codeFor = hid; code = ''; getJoinCode(hid).then((c) => { if (app.household === hid) code = c; }).catch(() => {}); } });
   async function copyLink() { try { await navigator.clipboard.writeText(inviteLink(code)); toast('✓ Invite link copied'); } catch { toast(inviteLink(code)); } }
   async function shareLink() {
-    const text = `Join our household on WFD (What's for Dinner): ${inviteLink(code)}\nOr enter code ${showCode(code)} in More → Settings.`;
+    const text = `Join our household on WFD Meals: ${inviteLink(code)}\nOr enter code ${showCode(code)} in More → Settings.`;
     try { if (navigator.share) await navigator.share({ title: 'Join our WFD household', text }); else { await navigator.clipboard.writeText(text); toast('✓ Invite copied'); } } catch {}
   }
   async function hh(label, fn) { hhBusy = label; hhErr = ''; try { await fn(); } catch (e) { hhErr = e.message; } hhBusy = ''; }
@@ -96,7 +96,6 @@
     {#each [['settings', 'Settings'], ['history', 'History'], ['stores', 'Stores']] as [k, l]}<button class:on={tab === k} onclick={() => (tab = k)}>{l}</button>{/each}
   </div>
   {#if isGuest()}<GuestNote leave text="You're using WFD as a guest. You can see your settings, but you'll need an account to change them. Guest data is deleted after 14 days." />{/if}
-  <button class="ghost" style="margin:6px 0 0 6px" onclick={() => go('prices')}>🏷️ Prices</button>
 
   <fieldset class="locked" disabled={isGuest()}>
   {#if tab === 'history'}
@@ -144,7 +143,8 @@
     <h1>Settings</h1>
     <InstallApp />
     <div class="card">
-      <label class="f">Who you cook for<select bind:value={s.audience} onchange={() => { saveSettings({ audience: s.audience }); toast(s.audience === "group" ? "✓ Big-group mode: more detail everywhere" : "✓ Household mode: simpler screens"); }}><option value="household">My household — keep it simple</option><option value="group">A big group (10+) — show me the details</option></select></label>
+      <label class="f">How much detail<select bind:value={s.audience} onchange={() => { saveSettings({ audience: s.audience }); toast(s.audience === "group" ? "✓ Showing all the details" : "✓ Simplified view"); }}><option value="household">Simplified</option><option value="group">Give me all the details</option></select></label>
+      <p class="small muted" style="margin:-4px 0 8px">Simplified keeps screens short. All the details adds full prep steps, bigger batches and more numbers: handy when cooking for a crowd.</p>
       <label class="f">Show pantry amounts in<select bind:value={s.units}><option value="imperial">Imperial — lb, oz, cups</option><option value="metric">Metric — kg, g, L</option><option value="relative">Roughly — plenty, some, low, out</option></select></label>
       <label class="f">Home address (where shopping trips usually start)<input bind:value={s.homeAddress} /></label>
       <label class="row small" style="gap:6px;margin:-4px 0 8px"><input type="checkbox" checked={!!app.settings.returnHome} onchange={(e) => saveSettings({ returnHome: e.currentTarget.checked })} /> Plan trips as round trips (drive back home at the end)</label>

@@ -23,7 +23,19 @@
   let open = $state(null), editing = $state(null), busy = $state(false), q = $state('');
   let por = $derived(portions());
   let near = $derived(q.trim().length > 2 ? new Set(suggest(q, app.recipes.map((r) => r.title), 30)) : new Set());
-  let list = $derived(app.recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase()) || near.has(r.title)).slice().sort((a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt))));
+  // filters: ingredients it must include, cuisine, favorites; and how to sort
+  let ingWant = $state([]), ingTyped = $state(''), cuisine = $state(''), favOnly = $state(false), sortBy = $state('new');
+  const favs = $derived(new Set(app.settings.favRecipes || []));
+  function toggleFav(r) { const f = new Set(favs); f.has(r.id) ? f.delete(r.id) : f.add(r.id); saveSettings({ favRecipes: [...f] }).catch((e) => toast(e.message)); }
+  function addIng(e) { e?.preventDefault(); const w = ingTyped.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); ingWant = [...new Set([...ingWant, ...w])]; ingTyped = ''; }
+  const hasIng = (r, w) => { const sing = w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1'); return r.ing.some((x) => x.toLowerCase().includes(sing)) || Object.keys(r.items).some((id) => (itemById(id)?.name || '').toLowerCase().includes(sing)); };
+  const cuisines = $derived([...new Set(app.recipes.map((r) => r.cuisine).filter(Boolean))].sort());
+  const filtering = $derived(!!(ingWant.length || cuisine || favOnly));
+  const SORTS = { new: (a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt)), az: (a, b) => a.title.localeCompare(b.title),
+    fav: (a, b) => (favs.has(b.id) - favs.has(a.id)) || a.title.localeCompare(b.title), cal: (a, b) => ((nutritionOf(a)?.kcal ?? 1e9) - (nutritionOf(b)?.kcal ?? 1e9)),
+    protein: (a, b) => ((nutritionOf(b)?.protein ?? -1) - (nutritionOf(a)?.protein ?? -1)) };
+  let list = $derived(app.recipes.filter((r) => (!q || r.title.toLowerCase().includes(q.toLowerCase()) || near.has(r.title))
+    && ingWant.every((w) => hasIng(r, w)) && (!cuisine || r.cuisine === cuisine) && (!favOnly || favs.has(r.id))).slice().sort(SORTS[sortBy]));
   const blank = () => ({ id: '', title: '', when: 'Lunch/Dinner', servings: 4, yield: '', fridge: '', freeze: '', ingText: '', stepsText: '', tip: '', items: [], newItems: [] });
 
   function edit(r) {
@@ -105,6 +117,19 @@
     {#if finding}<FindRecipes onclose={() => (finding = false)} />{/if}
     {#if starter}<Onboarding {go} onclose={() => (starter = false)} />{/if}
     <input placeholder="Search saved recipes" bind:value={q} style="margin:6px 0" />
+    <div class="filters">
+      <form class="ingf" onsubmit={addIng}><input placeholder="🥕 Has ingredients: chicken, rice…" bind:value={ingTyped} enterkeyhint="search" onblur={() => ingTyped.trim() && addIng()} /></form>
+      <select bind:value={cuisine} aria-label="Cuisine"><option value="">All cuisines</option>{#each cuisines as c}<option value={c}>{c}</option>{/each}</select>
+      <select bind:value={sortBy} aria-label="Sort"><option value="new">Newest first</option><option value="az">A–Z</option><option value="fav">Favorites first</option><option value="cal">Fewest calories</option><option value="protein">Most protein</option></select>
+      <button class="chip" class:on={favOnly} onclick={() => (favOnly = !favOnly)}>♥ Favorites{favs.size ? ` (${favs.size})` : ''}</button>
+    </div>
+    {#if ingWant.length || filtering}
+      <div class="row" style="gap:4px;margin:0 0 6px;align-items:center">
+        {#each ingWant as w}<button class="chip on" onclick={() => (ingWant = ingWant.filter((x) => x !== w))} aria-label="Remove {w}">{w} ✕</button>{/each}
+        <span class="small muted">{list.length} of {app.recipes.length} recipes</span>
+        <button class="quiet small" onclick={() => { ingWant = []; cuisine = ''; favOnly = false; }}>Clear filters</button>
+      </div>
+    {/if}
     <div class="card">
       {#each list as r, ri}
         {#if ri === 3 || ri === 12}<AdSlot slot="recipes-list" format="native" />{/if}
@@ -114,6 +139,7 @@
             <span class="grow"><b>{r.title}</b><br><span class="small muted">{r.when}{r.cuisine ? ` · ${r.cuisine}` : ''} · makes {r.servings || '?'}{por[r.id] ? ` · this week ${por[r.id].portions} portions (${por[r.id].scale}×)` : ''}</span>
               <br><MealFacts {r} compact /></span>
           </button>
+          <button class="quiet fav" class:on={favs.has(r.id)} onclick={() => toggleFav(r)} aria-label={favs.has(r.id) ? `Unfavorite ${r.title}` : `Favorite ${r.title}`} aria-pressed={favs.has(r.id)}>{favs.has(r.id) ? '♥' : '♡'}</button>
           <label class="switch" title="Shop for this recipe"><input type="checkbox" checked={r.active} onchange={(e) => setRecipeActive(r.id, e.currentTarget.checked).catch((er) => toast(er.message))} /><span></span></label>
         </div>
         {#if open === r.id}
@@ -134,6 +160,7 @@
       {:else}
         {#if q.trim()}<p class="small muted" style="margin:4px 0">No saved recipes match <b>“{q.trim()}”</b>.</p>
           <button class="ghost" onclick={() => { findQ = q.trim(); setView('find'); }}>🔎 Search for “{q.trim()}” in Find new</button>
+        {:else if filtering}<p class="small muted" style="margin:4px 0">No saved recipes match these filters.</p>{#if ingWant.length}<button class="ghost" onclick={() => { findQ = ingWant.join(' '); setView('find'); }}>🔎 Find new recipes with {ingWant.join(', ')}</button>{/if}
         {:else}<p class="small muted" style="margin:4px 0">No saved recipes yet.</p>{/if}
       {/each}
     </div>
@@ -142,6 +169,10 @@
 </div>
 
 <style>
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; align-items: center; }
+  .filters .ingf { flex: 1 1 200px; margin: 0; } .filters .ingf input { width: 100%; }
+  .filters select { width: auto; flex: 0 1 auto; }
+  .fav { font-size: 22px; padding: 2px 8px; color: var(--muted); } .fav.on { color: #d93a5a; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   @media (max-width: 480px) { .grid4 { grid-template-columns: repeat(2, 1fr); } }
 </style>

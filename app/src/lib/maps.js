@@ -141,22 +141,24 @@ async function osrmTable(points, sources, destinations) {
  * Each chain's fastest location from the start, then a full drive-time matrix for start → stores → home.
  * Returns { stores (with address/label/lat/lng/fromStart), matrix } ready for the optimizer.
  */
-export async function nearestAndMatrix(start, end, stores, useNearest, onStep) {
+export async function nearestAndMatrix(start, end, stores, useNearest, onStep, { away = false, radius = 25 } = {}) {
   onStep?.('Finding your start on the map…');
   const s = await geocode(start), e = await geocode(end);
   let found = stores.map((st) => ({ ...st }));
   const geos = await Promise.all(found.map((st) => geocode(st.address).catch(() => null)));
   found.forEach((st, i) => { if (geos[i]) Object.assign(st, { lat: geos[i].lat, lng: geos[i].lng, label: st.address, home: true }); });
 
+  let cands = [];
   if (useNearest) {
     onStep?.('Looking for stores near you…');
     try { await discoverStores(s, found); } catch (_) { /* map search unavailable: fall back to saved addresses */ }
     const { data: locs } = await sb.from('store_locations').select('*')
       .gte('lat', s.lat - 0.3).lte('lat', s.lat + 0.3).gte('lng', s.lng - 0.35).lte('lng', s.lng + 0.35);
-    const cands = [];
+    cands = [];
     found.forEach((st, si) => {
       const list = [];
-      if (st.lat != null) list.push({ si, lat: st.lat, lng: st.lng, label: st.address, home: true });
+      // the saved address is near home: skip it when starting somewhere else and it's out of range from there
+      if (st.lat != null && !(away && haversineMi(s, st) > radius)) list.push({ si, lat: st.lat, lng: st.lng, label: st.address, home: true });
       (locs || []).filter((l) => l.chain === st.id).forEach((l) => {
         if (!list.some((x) => haversineMi(x, l) < 0.12)) list.push({ si, lat: l.lat, lng: l.lng, label: (l.label || '').trim() || `near ${l.lat.toFixed(3)}, ${l.lng.toFixed(3)}`, home: false });
       });
@@ -168,7 +170,7 @@ export async function nearestAndMatrix(start, end, stores, useNearest, onStep) {
       cands.forEach((c, i) => { c.sec = t.durations[0][i]; c.m = t.distances[0][i]; });
       found = found.map((st, si) => {
         const best = cands.filter((c) => c.si === si && c.sec != null).sort((a, b) => a.sec - b.sec)[0];
-        if (!best) return st;
+        if (!best) return away ? { ...st, lat: null } : st;   // no location of this chain near the new start: leave it out
         const place = String(best.label).split(',')[0];
         return { ...st, lat: best.lat, lng: best.lng, label: best.label, home: best.home,
           name: (st.short || st.name).replace(/\s*\(.*\)/, '') + (place ? ' – ' + place : ''), short: (st.short || st.name).replace(/\s*\(.*\)/, ''),
@@ -176,6 +178,7 @@ export async function nearestAndMatrix(start, end, stores, useNearest, onStep) {
       });
     }
   }
+  if (away && !cands.length) found = found.filter((st) => st.lat != null && haversineMi(s, st) <= radius);
   found = found.filter((st) => st.lat != null);
   found.forEach((st) => (st.address = `${st.lat.toFixed(6)},${st.lng.toFixed(6)}`));
   onStep?.('Working out the best trip…');

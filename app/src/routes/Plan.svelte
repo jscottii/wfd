@@ -1,4 +1,6 @@
 <script>
+  import { swipe } from '../lib/swipe.js';
+  import RecipePreview from '../components/RecipePreview.svelte';
   import AdSlot from '../components/AdSlot.svelte';
   import { app, saveSettings, itemById, recipeById, saveRecipe, cheapestPrice, savePlan, deletePlan, toast, owned, track, importRecipes } from '../lib/db.svelte.js';
   import { CUISINES, findIdeas, mealDetail, fromMealDb, findByIngredients } from '../lib/discover.js';
@@ -109,6 +111,14 @@
   let showPantry = $state(true);
 
   let slotPick = $state(null);   // { day, meal } being changed
+  let preview = $state(null);    // { r, d, m }: recipe shown in the overlay
+  // swipe left = take the recipe off this week's plan (every spot it's in); swipe right = just empty that spot. Both can be undone.
+  let undo = $state(null), snap = null, undoT = 0;
+  const takeSnap = () => (snap = { sel: { ...sel }, days: days.map((d) => ({ ...d })), manual });
+  const offer = (text) => { undo = text; clearTimeout(undoT); undoT = setTimeout(() => (undo = null), 7000); };
+  function clearSpot(d, m) { takeSnap(); d[m] = ''; delete d[m + '_side']; days = [...days]; manual = true; offer(`Emptied ${d.day} ${m}`); }
+  function dropFromPlan(id) { const t = recipeById(id)?.title; takeSnap(); manual = true; toggle(id); days = [...days]; offer(`Took ${t} off this week`); }
+  function undoIt() { if (!snap) return; manual = true; sel = snap.sel; days = snap.days; manual = snap.manual; undo = null; snap = null; }
   let manual = $state(!!app.plan.days?.length);   // you placed meals yourself (or a saved plan), so don't reshuffle them
   function toggle(id) {
     if (sel[id]) { delete sel[id]; days.forEach((d) => SLOTS.forEach((s) => d[s] === id && (d[s] = ''))); } else sel[id] = true;
@@ -375,7 +385,7 @@
   {#if picked.length}
     <div class="card">
       <h3 style="margin:0">Which meal, which day</h3>
-      <p class="small muted" style="margin:4px 0 10px">We spread your recipes out — tap any meal to change it. <span class="pill">leftovers</span> means you cooked it earlier in the week.</p>
+      <p class="small muted" style="margin:4px 0 10px">We spread your recipes out. Tap a meal to see the recipe or change it; swipe left to take it off the plan, swipe right to empty just that spot. <span class="pill">leftovers</span> means you cooked it earlier in the week.</p>
       <div class="week">
         {#each days.slice(shape.from, shape.to + 1) as d, di}
           {@const dayN = [...shape.meals, ...(shape.snack ? ['snack'] : [])].flatMap((m) => [d[m] ? recipeById(d[m]) : null, sideOf(d, m)]).filter(Boolean).map((r) => nutritionOf(r)).filter((n) => n?.ok)}
@@ -385,12 +395,15 @@
               {#each [...shape.meals, ...(shape.snack ? ['snack'] : [])] as m}
                 {@const r = d[m] ? recipeById(d[m]) : null}
                 {@const before = r && days.slice(shape.from, shape.from + di).some((x) => SLOTS.some((s) => x[s] === r.id))}
-                <button class="wslot" class:empty={!r} onclick={() => (slotPick = { day: d.day, meal: m })}>
+                <div class="swrap">
+                <span class="sw-l" aria-hidden="true">Empty this spot</span><span class="sw-r" aria-hidden="true">Remove from plan</span>
+                <button class="wslot" class:empty={!r} use:swipe={r ? { left: () => dropFromPlan(r.id), right: () => clearSpot(d, m) } : {}} onclick={() => (r ? (preview = { r, d, m }) : (slotPick = { day: d.day, meal: m }))}>
                   <span class="small muted wmeal">{m[0].toUpperCase() + m.slice(1)}</span>
                   {#if r}
                     <span class="row" style="gap:8px;flex-wrap:nowrap;align-items:center"><Dish {r} size={38} round={8} /><span class="wname">{short(r)}{#if before} <span class="pill">leftovers</span>{/if}{#if nutritionOf(r)?.ok}{@const n = nutritionOf(r)}<span class="wmac">{n.kcal} cal · {n.protein}P {n.carbs}C {n.fat}F</span>{/if}</span></span>
                   {:else}<span class="small muted">— eating out / nothing</span>{/if}
                 </button>
+                </div>
                 {#if r && sideOf(d, m)}{@const sd = sideOf(d, m)}
                   <div class="wside small"><span>+ {sd.title}{#if nutritionOf(sd)?.ok} <span class="muted">· {nutritionOf(sd).kcal} cal</span>{/if}</span><button class="quiet" aria-label="Remove {sd.title}" onclick={() => dropSide(d, m)}>✕</button></div>
                 {:else if r && kind(r) === 'main' && isLight(r) && sideFor(r) && (m === 'lunch' || m === 'dinner')}
@@ -413,6 +426,16 @@
       {/if}
       {#if manual}<button class="quiet" onclick={() => { days = autoFill(picked, household); manual = false; }}>↺ Spread them out for me again</button>{/if}
     </div>
+    {#if preview}
+      {@const pv = preview}
+      <RecipePreview r={pv.r} where={`${pv.d.day} · ${pv.m}`} onclose={() => (preview = null)} actions={[
+        { label: 'Change meal', run: () => { preview = null; slotPick = { day: pv.d.day, meal: pv.m }; } },
+        { label: 'Empty this spot', run: () => { preview = null; clearSpot(pv.d, pv.m); } },
+        { label: 'Remove from plan', run: () => { preview = null; dropFromPlan(pv.r.id); } },
+        { label: 'Done', kind: '', run: () => (preview = null) },
+      ]} />
+    {/if}
+    {#if undo}<div class="undo-bar" role="status"><span>{undo}</span><button class="quiet" onclick={undoIt}>Undo</button></div>{/if}
     {#if slotPick}
       {@const sd = days.find((x) => x.day === slotPick.day)}
       <div class="sheet-back" role="presentation" onclick={() => (slotPick = null)}></div>

@@ -35,6 +35,8 @@
   const patchCtx = (patch) => (cart ? patchCartMeta(cart.id, patch) : patchPlan(patch));
   const doPrep = (on, off, timers) => (cart ? updateCartPrep(cart.id, on, off, timers) : updatePrep(on, off, timers));
   const big = $derived(app.settings.audience === 'group' || !!cart);
+  // Simplified ↔ Give me all the details (the same setting as More → Settings)
+  const setDetail = (v) => saveSettings({ audience: v }).then(() => toast(v === 'group' ? '✓ Showing all the details' : '✓ Simplified view')).catch((e) => (err = e.message));
   // one meal at a time, or the whole week's prep in one go
   const prepStyle = $derived(app.settings.prepStyle || 'single');
   $effect(() => { if (allRecipes.length) untrack(() => track('prep_open', { style: prepStyle, group: big, cart: !!cart, recipes: allRecipes.length })); });
@@ -405,6 +407,12 @@
 <svelte:window onkeydown={focusKey} />
 <div class="page wide" style="padding-bottom:calc(var(--nav) + 90px)">
   <h1>{!big && mode === 'simple' ? "What's for dinner" : 'Cook day'}</h1>
+  {#if !cart}
+    <div class="viewnote small">
+      {#if big}This is the <b>detailed</b> prep screen, made for cooking for a big group. For a simpler view, <button class="quiet" onclick={() => setDetail('household')}>switch to Simplified</button>.
+      {:else}This is the <b>simplified</b> prep screen. Want every step and number? <button class="quiet" onclick={() => setDetail('group')}>Give me all the details</button>.{/if}
+    </div>
+  {/if}
   <p class="sentence small" style="margin:0 0 8px">Cooking from
     <select class="inl" value={cart ? cart.id : 'home'} onchange={(e) => openCart(e.currentTarget.value)}>
       <option value="home">🏠 {currentHousehold()?.name || 'Home'} list</option>
@@ -666,3 +674,16 @@
   {/if}
   {#if recipes.length && !focus}<AdSlot slot="prep-bottom" format="rect" />{/if}
 </div>
+
+<style>
+  .viewnote { background: var(--tint); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
+  .viewnote button { padding: 0; font-weight: 600; }
+  /* open sections get a full background, so it's clear what's open and what closes it */
+  .page :global(details) { border-radius: 12px; transition: background .15s; }
+  .page :global(details > summary) { cursor: pointer; list-style: none; padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; }
+  .page :global(details > summary::-webkit-details-marker) { display: none; }
+  .page :global(details > summary::after) { content: 'Open ▾'; margin-left: auto; font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .page :global(details[open]) { background: var(--accent-soft); padding: 2px 10px 10px; margin: 6px 0; }
+  .page :global(details[open] > summary) { margin: 0 -10px 6px; }
+  .page :global(details[open] > summary::after) { content: 'Close ▴'; }
+</style>
