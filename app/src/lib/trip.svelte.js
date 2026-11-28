@@ -80,7 +80,10 @@ export async function planTrip() {
     res.itemCount = items.length;
     res.alreadyHave = app.items.filter((i) => n[i.id] > 0 && owned(i)).map((i) => i.id);
     trip.result = res; trip.choice = ['cheapest', 'fastest'].includes(s.tripChoice) ? s.tripChoice : 'best'; trip.when = Date.now();
-    track('trip_planned', { items: items.length });
+    // for the owner dashboard: how the trip started, roughly where (rounded to ~10 km) and which store chains it used
+    const r1 = (x) => (Number.isFinite(+x) ? Math.round(+x * 10) / 10 : undefined), best = res[trip.choice] || res.best;
+    track('trip_planned', { items: items.length, start: trip.start, lat: r1(nm.start?.lat), lng: r1(nm.start?.lng),
+      stores: [...new Set((best?.stores || []).map((x) => nm.stores.find((y) => y.id === x.id)?.short || x.short || x.name).filter(Boolean))] });
     await drawLine();
   } catch (e) {
     trip.error = String(e.message || e);

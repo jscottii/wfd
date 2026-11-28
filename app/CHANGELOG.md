@@ -5,6 +5,10 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.23.0 — Nov 28, 2026
+- **Owner dashboard, "Where & stores":** a map of where shopping trips start (rounded to about 10 km), whether people start from home, where they are or a typed address, households' home towns (town and state only), the store chains households use and the ones that end up on planned trips.
+- Privacy policy updated to say trips record their general starting area and store chains.
+
 ## 1.22.1 — Nov 28, 2026
 - The Shop map no longer covers the WFD button, the menus or pop-ups.
 - "Retake the welcome questions" is now a full button in More → Settings.

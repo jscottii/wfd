@@ -1,6 +1,7 @@
 <script>
   import { app, sb, saveSettings, toast } from '../lib/db.svelte.js';
   import DayBars from '../components/DayBars.svelte';
+  import AreaMap from '../components/AreaMap.svelte';
   // Owner dashboards: usage, ads, and data storage. Only admins can load these numbers.
   let days = $state(30), tab = $state('usage'), st = $state(null), err = $state(''), busy = $state(false);
   async function load() {
@@ -11,6 +12,11 @@
     st = data;
   }
   $effect(() => { days; load(); });
+  // where people shop from and which stores they use (a separate query, loaded when the tab opens)
+  let geo = $state(null), geoErr = $state('');
+  async function loadGeo() { geoErr = ''; const { data, error } = await sb.rpc('admin_geo', { days }); if (error) geoErr = /admin_geo|function/i.test(error.message) ? 'The “Where” numbers need a one-time database update (supabase/migrations/2026-11-28-admin-geo.sql).' : error.message; else geo = data; }
+  $effect(() => { if (tab === 'where') { days; loadGeo(); } });
+  const START = { home: '🏠 From home', here: '📍 From where they were', typed: '✏️ From a typed address' };
   const num = (n) => Number(n || 0).toLocaleString();
   const bytes = (b) => { b = Number(b) || 0; return b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB'; };
   const pct = (a, b) => (b ? ((a / b) * 100).toFixed(1) + '%' : '—');
@@ -29,7 +35,7 @@
   <div class="spread"><h1>Dashboards</h1>
     <div class="seg">{#each [7, 30, 90] as d}<button class:on={days === d} onclick={() => (days = d)}>{d}d</button>{/each}</div>
   </div>
-  <div class="seg" style="margin-bottom:10px">{#each [['usage', '📈 Usage'], ['ads', '📣 Ads'], ['data', '🗄 Data storage']] as [k, l]}<button class:on={tab === k} onclick={() => (tab = k)}>{l}</button>{/each}</div>
+  <div class="seg" style="margin-bottom:10px">{#each [['usage', '📈 Usage'], ['where', '📍 Where & stores'], ['ads', '📣 Ads'], ['data', '🗄 Data storage']] as [k, l]}<button class:on={tab === k} onclick={() => (tab = k)}>{l}</button>{/each}</div>
   {#if err}<div class="err">⚠️ {err}</div>{/if}
   {#if busy && !st}<p class="muted"><span class="spinner"></span> Loading…</p>{/if}
 
@@ -56,6 +62,27 @@
       {:else}<p class="small muted">No messages yet.</p>{/each}
     </div>
     <p class="small muted">Usage is counted in our own database (no outside analytics tools). Counting started Nov 21, 2026.</p>
+  {/if}
+
+  {#if tab === 'where'}
+    {#if geoErr}<div class="err">⚠️ {geoErr}</div>
+    {:else if !geo}<p class="muted"><span class="spinner"></span> Loading…</p>
+    {:else}
+      <div class="tiles">
+        <div class="tile"><b>{num(geo.homes_set)}</b><span>households with a home set</span></div>
+        <div class="tile"><b>{num(geo.trip_starts.reduce((a, x) => a + x.n, 0))}</b><span>trips planned ({days}d)</span></div>
+        <div class="tile"><b>{num(geo.stores_saved.length)}</b><span>store chains in use</span></div>
+      </div>
+      <div class="card"><h3>Where trips start</h3><AreaMap points={geo.trip_points} />
+        <p class="small muted" style="margin:0">Each dot is an area about 10 km across, never an exact spot. <span style="color:#1f5fd1">●</span> from home · <span style="color:#e07a1f">●</span> from somewhere else. Trips before Nov 28 weren't mapped.</p></div>
+      <div class="grid2c">
+        <div class="card"><h3>Home areas (households)</h3>{@render hbars(geo.home_areas)}</div>
+        <div class="card"><h3>How trips start</h3>{@render hbars(geo.trip_starts.map((x) => ({ ...x, k: START[x.k] || x.k })))}</div>
+        <div class="card"><h3>Stores households shop at</h3>{@render hbars(geo.stores_saved)}</div>
+        <div class="card"><h3>Stores on planned trips</h3>{@render hbars(geo.stores_on_trips)}</div>
+      </div>
+      <p class="small muted">Home areas show only the town and state; street addresses stay in the database.</p>
+    {/if}
   {/if}
 
   {#if st && tab === 'ads'}
