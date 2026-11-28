@@ -5,6 +5,12 @@ Versions are MAJOR.MINOR.PATCH:
 - **MINOR** (1.x.0) — new features.
 - **MAJOR** (x.0.0) — big milestones (e.g. the app-store launch, a redesign).
 
+## 1.22.0 — Nov 28, 2026
+- **Plan's cost bar now matches Shop:** once your trip is planned, the bar shows the trip's own grocery total. While you're still changing meals it estimates the same way the trip does (it was counting some items twice). If you set a weekly budget, it shows how far over or under you are.
+- **The WFD button:** bigger, centered letters, and at most three options with larger, easier-to-read labels, each one about the page you're on (Plan: pick meals, add a recipe, plan ahead · Shop: add to list, switch list, scan a receipt · Pantry: add, scan, use what expires soon · Recipes: add from a link, find new, type one in).
+- **Greeting:** a bigger "Good morning, Jon 👋" that shows once, on the first page you open.
+- **Welcome questions:** "What matters most" adds *I have dietary restrictions* (asks which diets or allergies) and *Picky eaters at home* (Pick for me skips spicy or unusual dishes). A new question combines how you like to cook (quick meals, a few nights a week, or one big prep day) with an optional weekly budget. Your name is now the last question.
+
 ## 1.21.0 — Nov 28, 2026
 - **The WFD button:** a round WFD button now sits in the middle of the bottom bar on every page. Tap it for what you can add from there: a recipe, something for the shopping list, something for the pantry, a meal pick, a receipt. It replaces the separate + and cart buttons.
 - **Running cost on Plan:** as you pick meals, a bar shows roughly what the shopping list will cost, from the prices you've paid and typical prices.

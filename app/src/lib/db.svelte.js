@@ -27,30 +27,36 @@ export const app = $state({ pantry: [],
 // spices, sauces and other jars last for many batches: one is enough however many times the recipe is made
 const ONE_WILL_DO = /^(jar|bottle|box|container|5 lb|4 lb|2 lb|42 oz|48 oz|17 oz|15 oz|16 oz|12 oz|7 oz|9 oz|5 oz|2 oz bottle|4 oz jar|8 oz|30 oz|20 oz)$/;
 const SHELF = /spice|seasoning|sauce|paste|oil|vinegar|flour|sugar|starch|salt|honey|syrup|powder|masala|leaf|leaves|seeds?|extract|mirin|wine|sake|doubanjiang|cumin|paprika|cinnamon|nutmeg|oregano|turmeric|cardamom|anise|peppercorn|black pepper|baking/i;
-export function need() {
-  const n = neededUnits(app.recipes, app.plan);
+export function need() { return needFor(app.recipes, app.plan); }
+/** What a plan needs from the store, in packages: same rules for the real list and for a plan you're still building. */
+function needFor(recipes, plan) {
+  const n = neededUnits(recipes, plan);
   for (const id of Object.keys(n)) {
     const it = itemById(id); if (!it || n[id] <= 1) continue;
     const est = estimateFor(it.name);
     if (SHELF.test(it.name) && (!est || est.rough || ONE_WILL_DO.test(est.pack))) n[id] = 1;
   }
   // things you added to the list yourself, not tied to any meal
-  for (const [id, v] of Object.entries(app.plan.extra || {})) if (v > 0 && itemById(id)) n[id] = (n[id] || 0) + v;
+  for (const [id, v] of Object.entries(plan.extra || {})) if (v > 0 && itemById(id)) n[id] = (n[id] || 0) + v;
   // amounts you changed on the shopping list win (0 = don't buy it this week)
-  for (const [id, v] of Object.entries(app.plan.buy || {})) { if (!(id in n)) continue; if (v > 0) n[id] = v; else delete n[id]; }
+  for (const [id, v] of Object.entries(plan.buy || {})) { if (!(id in n)) continue; if (v > 0) n[id] = v; else delete n[id]; }
   return n;
 }
 /** Rough cost of the shopping list for a plan you're still building: needed items not already owned, at the cheapest known (or typical) price. */
 export function estimateList({ days, household, shape, selected }) {
   const on = new Set(selected || []);
   const recipes = app.recipes.map((r) => ({ ...r, active: on.has(r.id) }));
-  const n = neededUnits(recipes, { ...app.plan, household: Number(household) || app.plan.household || 3, days, ...(shape ? { shape } : {}) });
-  for (const [id, v] of Object.entries(app.plan.extra || {})) if (v > 0) n[id] = (n[id] || 0) + v;
+  const n = needFor(recipes, { ...app.plan, household: Number(household) || app.plan.household || 3, days, ...(shape ? { shape } : {}) });
   let total = 0, items = 0, guessed = 0;
   for (const [id, c] of Object.entries(n)) {
     const it = itemById(id); if (!it || owned(it)) continue;
-    const p = priceFor(id); if (!p.price) { guessed++; continue; }
-    total += p.price * c; items++; if (p.est) guessed++;
+    items++;
+    // priced the way the trip prices it: a known price covers the recipe's base amount (scale by need ÷ base);
+    // a typical-price estimate is per package
+    const row = app.prices[id] || {};
+    const known = Object.values(row).filter((e) => e?.price > 0 && !e.notFound).map((e) => e.price);
+    if (known.length) total += Math.min(...known) * (c / (Number(it.units) || 1));
+    else { const e = estimateFor(it.name, it.cat); if (e) { total += e.price * c; guessed++; } }
   }
   return { total, items, guessed };
 }

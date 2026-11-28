@@ -11,7 +11,10 @@ const kindOf = (r) => { const w = String(r?.when || '').toLowerCase(); return /b
  * recipes: saved recipes; need: { breakfast, main, snack } counts; pantryIds: Set of item ids on hand;
  * liked: cuisines; recent: Set of recipe ids used lately. Returns recipe ids.
  */
-export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], recent = new Set(), usePantry = false, keep = [] }) {
+// quick: favor short recipes; picky: steer clear of bold or unusual flavors (both from the welcome questions)
+const SLOW = /\b(hours?|overnight|slow cooker|marinate|braise|rest(?:ing)? for)\b/i;
+const BOLD = /\b(spicy|curry|chil(?:i|e)s?|jalape|habanero|sriracha|chipotle|anchov|liver|kidney|tripe|octopus|squid|eel|blue cheese|kimchi|fish sauce|wasabi)\b/i;
+export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], recent = new Set(), usePantry = false, keep = [], quick = false, picky = false }) {
   const info = recipes.map((r) => {
     const text = `${r.title} ${(r.ing || []).join(' ')}`.toLowerCase();
     return { r, kind: kindOf(r), items: new Set(Object.keys(r.items || {})), protein: tag(PROTEINS, text), style: tag(STYLES, text), cuisine: String(r.cuisine || '').toLowerCase() };
@@ -28,7 +31,9 @@ export function pickMix({ recipes, need, pantryIds = new Set(), liked = [], rece
       + same.filter((c) => c.cuisine && c.cuisine === x.cuisine).length * 0.3;
     const fav = x.cuisine && likedL.some((c) => x.cuisine.includes(c) || c.includes(x.cuisine)) ? 0.25 : 0;
     const fresh = recent.has(x.r.id) ? -0.5 : 0;
-    return shared * 1.2 + onHand * 1.5 + fav + fresh - repeat + Math.random() * 0.8;   // enough chance that picks vary
+    const steps = (x.r.steps || []).length, all = `${x.r.title} ${(x.r.ing || []).join(' ')} ${(x.r.steps || []).join(' ')}`;
+    const fit = (quick ? (steps > 8 ? -0.5 : 0) + (SLOW.test(all) ? -0.6 : 0) : 0) + (picky && BOLD.test(all) ? -0.9 : 0);
+    return shared * 1.2 + onHand * 1.5 + fav + fresh + fit - repeat + Math.random() * 0.8;   // enough chance that picks vary
   };
   // the ones you said to keep go in first; the rest are chosen to go with them
   for (const id of keep) { const x = info.find((y) => y.r.id === id); if (x && !chosen.includes(x)) { chosen.push(x); x.items.forEach((i) => pool.add(i)); } }

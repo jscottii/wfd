@@ -18,28 +18,34 @@
     pick: ['pick', '✨', 'Pick meals for me', 'plan'],
     lists: ['lists', '📋', 'Switch list'],
     receipt: ['receipt', '🧾', 'Scan a receipt'],
+    ahead: ['ahead', '📅', 'Plan ahead'],
+    soon: ['soon', '⏰', 'Use what expires soon', 'plan'],
   };
+  // at most three, and only what fits the page you're on
   const BY_PAGE = {
-    plan: ['pick', 'recipe', 'list', 'pantry'],
-    trip: ['list', 'lists', 'receipt', 'pantry'],
-    pantry: ['pantry', 'scan', 'list', 'recipe'],
-    recipes: ['recipe', 'find', 'write', 'list'],
-    prep: ['list', 'pantry', 'recipe'],
+    plan: ['pick', 'recipe', 'ahead'],
+    trip: ['list', 'lists', 'receipt'],
+    pantry: ['pantry', 'scan', 'soon'],
+    recipes: ['recipe', 'find', 'write'],
+    prep: ['list'],
+    more: ['list', 'pantry', 'recipe'],
+    prices: ['list'],
   };
-  let items = $derived((BY_PAGE[page] || ['list', 'pantry', 'recipe']).map((k) => A[k]).filter((a) => !(isGuest() && (a[0] === 'pantry' || a[0] === 'scan'))));
+  let items = $derived((BY_PAGE[page] || ['list']).map((k) => A[k]).filter((a) => !(isGuest() && (a[0] === 'pantry' || a[0] === 'scan'))));
 
   function run([id, , , where]) {
     open = false;
     if (id === 'list') { quick = true; return; }
     if (id === 'lists') { ui.cartPicker = true; return; }
     if (id === 'receipt') { ui.receipt = true; return; }
+    if (id === 'ahead') { ui.calendar = true; window.scrollTo(0, 0); return; }
     if (where && where !== page) go(where);
     ui.act = id;   // the page picks this up and opens the right form
   }
   // a little arc above the button
   const pos = (i, n) => {
-    const t = n === 1 ? 0.5 : i / (n - 1), a = wide.matches ? Math.PI / 2 + t * Math.PI / 2 : Math.PI * (0.88 - 0.76 * t), r = n > 3 ? 118 : 100;
-    return `--x:${Math.round(Math.cos(a) * r)}px;--y:${-Math.round(Math.sin(a) * r) - 18}px;--d:${i * 30}ms`;
+    const t = n === 1 ? 0.5 : i / (n - 1), a = wide.matches ? Math.PI / 2 + t * Math.PI / 2 : Math.PI * (0.83 - 0.66 * t), r = 116;
+    return `--x:${Math.round(Math.cos(a) * r)}px;--y:${-Math.round(Math.sin(a) * r) - 28}px;--d:${i * 30}ms`;
   };
   async function addToList(e) {
     e?.preventDefault(); if (!text.trim()) return;
@@ -58,7 +64,7 @@
     {/each}
   {/if}
   <button class="wfd-fab" class:open aria-label={open ? 'Close' : 'Add something'} aria-expanded={open} onclick={() => (open = !open)}>
-    <img src="wfd-mark.svg" alt="" width="58" height="58" />
+    <img src="wfd-mark.svg" alt="WFD" width="48" height="16" />
     {#if app.carts.length && page === 'trip' && !open}<span class="fab-badge">{app.carts.length + 1}</span>{/if}
   </button>
 </div>
@@ -77,14 +83,14 @@
 <style>
   .fab-wrap { position: fixed; left: 50%; bottom: calc(var(--nav) + env(safe-area-inset-bottom) - 44px); width: 66px; height: 66px; transform: translateX(-50%); z-index: 56; }
   .wfd-fab { position: relative; width: 66px; height: 66px; border-radius: 50%; padding: 0; display: grid; place-items: center; background: var(--accent); border: 4px solid var(--bg, #fffdf9); box-shadow: 0 6px 18px rgba(31, 95, 209, .4); transition: transform .2s; }
-  .wfd-fab img { width: 54px; height: 54px; transition: transform .2s; }
+  .wfd-fab img { width: 48px; height: auto; display: block; transition: transform .2s; }
   .wfd-fab.open img { transform: rotate(-12deg) scale(.9); }
   .wfd-fab:active { transform: scale(.94); }
-  .fab-back { position: fixed; inset: 0; background: rgba(20, 30, 50, .35); z-index: 55; }
-  .fab-opt { position: absolute; left: 50%; top: 50%; width: 86px; margin: -27px 0 0 -43px; display: flex; flex-direction: column; align-items: center; gap: 3px; background: transparent; color: #fff; padding: 0; font-weight: 600;
+  .fab-back { position: fixed; inset: 0; background: rgba(20, 30, 50, .5); z-index: 55; }
+  .fab-opt { position: absolute; left: 50%; top: 50%; width: 118px; margin: -30px 0 0 -59px; display: flex; flex-direction: column; align-items: center; gap: 3px; background: transparent; color: #fff; padding: 0; font-weight: 600;
     transform: translate(var(--x), var(--y)); animation: pop .22s ease-out both; animation-delay: var(--d); }
-  .fo-ic { width: 48px; height: 48px; border-radius: 50%; background: var(--card, #fff); display: grid; place-items: center; font-size: 22px; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
-  .fo-l { font-size: 11.5px; line-height: 1.15; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+  .fo-ic { width: 54px; height: 54px; border-radius: 50%; background: var(--card, #fff); display: grid; place-items: center; font-size: 26px; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .fo-l { white-space: nowrap; font-size: 14px; font-weight: 700; line-height: 1.2; text-align: center; color: var(--ink, #1d2230); background: var(--card, #fff); border-radius: 10px; padding: 3px 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
   @keyframes pop { from { transform: translate(0, 0) scale(.3); opacity: 0; } to { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; } }
   .qa { left: 50%; right: auto; transform: translateX(-50%); }
   @media (min-width: 900px) { .fab-wrap { left: auto; right: 28px; bottom: 28px; transform: none; } }

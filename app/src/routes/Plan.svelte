@@ -19,7 +19,7 @@
   import { ui } from '../lib/ui.svelte.js';
   import FindRecipes from '../components/FindRecipes.svelte';
   let finding = $state(false);
-  import { trip, planTrip } from '../lib/trip.svelte.js';
+  import { trip, planTrip, chosen as tripPlan } from '../lib/trip.svelte.js';
   let { go } = $props();
   let focusWeek = $state('');   // a future week opened from the calendar
 
@@ -199,7 +199,7 @@
       topping = '';
       const recent = new Set(app.weeks.flatMap((w) => w.selected || []));
       const pantryIds = new Set((usePantry && chosenRows.length ? chosenRows : onHand).filter((p) => p.item_id).map((p) => p.item_id));
-      const r = pickMix({ recipes: [...new Set([...kept.map(recipeById), ...pool])], need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry, keep: kept });
+      const r = pickMix({ recipes: [...new Set([...kept.map(recipeById), ...pool])], need: needN, pantryIds, liked: autoCuisines, recent, usePantry: !!usePantry, keep: kept, quick: app.settings.cookStyle === 'quick', picky: !!app.settings.picky });
       sel = Object.fromEntries(r.ids.map((id) => [id, true]));
       lastShown = new Set(r.ids);
       days = autoFill(picked, household); manual = false;
@@ -207,9 +207,17 @@
       if (autoSides) { topping = 'Adding sides to light meals…'; await addSides(); topping = ''; }
     } catch (e) { err = e.message; topping = ''; }
   }
-  $effect(() => { if (ui.act === 'pick') { ui.act = ''; pickForMe(); setTimeout(() => document.querySelector('.pickfor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } });
+  $effect(() => { if (ui.act === 'soon') { ui.act = ''; usePantry = true; pickForMe(); setTimeout(() => document.querySelector('.pickfor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } else if (ui.act === 'pick') { ui.act = ''; pickForMe(); setTimeout(() => document.querySelector('.pickfor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } });
   // the shopping list's rough cost, updated as you pick meals
-  let est = $derived(estimateList({ days, household, shape, selected: Object.keys(sel).filter((k) => sel[k]) }));
+  // when the plan on screen is the saved one and the trip is already priced, show the trip's own total so both match
+  let unchanged = $derived(JSON.stringify(Object.keys(sel).filter((k) => sel[k]).sort()) === JSON.stringify(app.recipes.filter((r) => r.active).map((r) => r.id).sort())
+    && JSON.stringify($state.snapshot(days)) === JSON.stringify(app.plan.days || []) && Number(household) === Number(app.plan.household));
+  let est = $derived.by(() => {
+    const e = estimateList({ days, household, shape, selected: Object.keys(sel).filter((k) => sel[k]) });
+    const t = unchanged && trip.result && !trip.result.empty ? tripPlan() : null;
+    return t ? { ...e, total: t.groceries, exact: true } : e;
+  });
+  const budget = $derived(Number(app.settings.weeklyBudget) || 0);
   // the week at a glance: average per day for one person, from the meals placed in the grid
   let weekN = $derived.by(() => {
     const ds = days.slice(shape.from, shape.to + 1), slots = [...shape.meals, ...(shape.snack ? ['snack'] : [])];
@@ -292,7 +300,7 @@
   {#if err}<div class="err">⚠️ {err}</div>{/if}
   {#if msg}<div class="ok">{msg}</div>{/if}
   {#if picked.length}
-    <button class="estbar" onclick={() => go('trip')} title="Open the shopping list">🛒 <span>Shopping list so far: <b>about ${Math.round(est.total)}</b></span><span class="small muted">{est.items} item{est.items === 1 ? '' : 's'}{est.guessed ? ` · ${est.guessed} estimated` : ''}</span></button>
+    <button class="estbar" onclick={() => go('trip')} title="Open the shopping list">🛒 <span>Shopping list so far: <b>about ${Math.round(est.total)}</b></span><span class="small muted">{est.items} item{est.items === 1 ? '' : 's'}{est.exact ? ' · same as your trip' : est.guessed ? ` · ${est.guessed} at typical prices` : ''}</span>{#if budget}<span class="small" class:warn={est.total > budget}>{est.total > budget ? `$${Math.round(est.total - budget)} over your $${budget} budget` : `$${Math.round(budget - est.total)} under budget`}</span>{/if}</button>
   {/if}
 
   <div class="card">
